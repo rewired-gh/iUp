@@ -2,8 +2,9 @@ import Cocoa
 import Carbon
 import os.log
 
-/// Listen-only event tap on a dedicated thread. Fires .iUpToggleLock when the
-/// configured lock hotkey is pressed. Default: control+option+command+L.
+/// Listen-only event tap on a dedicated thread. Fires `.iUpToggleLock` for the lock
+/// hotkey (default ⌃⌥⌘L) and `.iUpToggleSession` for the session hotkey (default ⌃⌥⌘S).
+/// Modifier matching is exact: extra modifiers do not trigger.
 final class HotkeyManager {
     private static let log = Logger(subsystem: "moe.rewired.iUp", category: "Hotkey")
     private var eventTap: CFMachPort?
@@ -11,8 +12,22 @@ final class HotkeyManager {
     private var tapRunLoop: CFRunLoop?
     private(set) var isRegistered = false
 
-    var keyCode: Int = 37                                   // 'L'
-    var modifiers: Int = cmdKey | optionKey | controlKey
+    // Lock hotkey: ⌃⌥⌘L
+    var lockKeyCode: Int = 37
+    var lockModifiers: Int = cmdKey | optionKey | controlKey
+    // Session-toggle hotkey: ⌃⌥⌘S
+    var sessionKeyCode: Int = 1
+    var sessionModifiers: Int = cmdKey | optionKey | controlKey
+
+    private static func exactMatch(_ event: CGEvent, keyCode: Int, modifiers: Int) -> Bool {
+        guard Int(event.getIntegerValueField(.keyboardEventKeycode)) == keyCode else { return false }
+        let f = event.flags
+        func required(_ m: Int) -> Bool { modifiers & m != 0 }
+        return f.contains(.maskCommand)   == required(cmdKey)
+            && f.contains(.maskShift)     == required(shiftKey)
+            && f.contains(.maskAlternate) == required(optionKey)
+            && f.contains(.maskControl)   == required(controlKey)
+    }
 
     func register() {
         if isRegistered { if AXIsProcessTrusted() { return }; unregister() }
@@ -22,26 +37,16 @@ final class HotkeyManager {
             tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
             eventsOfInterest: 1 << CGEventType.keyDown.rawValue,
             callback: { _, type, event, refcon in
-                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    if let refcon {
-                        let me = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
-                        if let tap = me.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
-                    }
-                    return Unmanaged.passUnretained(event)
-                }
                 guard let refcon else { return Unmanaged.passUnretained(event) }
                 let me = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
-                let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
-                let flags = event.flags
-                guard keyCode == me.keyCode else { return Unmanaged.passUnretained(event) }
-                var match = true
-                let m = me.modifiers
-                if m & cmdKey != 0 { match = match && flags.contains(.maskCommand) }
-                if m & shiftKey != 0 { match = match && flags.contains(.maskShift) }
-                if m & optionKey != 0 { match = match && flags.contains(.maskAlternate) }
-                if m & controlKey != 0 { match = match && flags.contains(.maskControl) }
-                if match {
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    if let tap = me.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    return Unmanaged.passUnretained(event)
+                }
+                if HotkeyManager.exactMatch(event, keyCode: me.lockKeyCode, modifiers: me.lockModifiers) {
                     DispatchQueue.main.async { NotificationCenter.default.post(name: .iUpToggleLock, object: nil) }
+                } else if HotkeyManager.exactMatch(event, keyCode: me.sessionKeyCode, modifiers: me.sessionModifiers) {
+                    DispatchQueue.main.async { NotificationCenter.default.post(name: .iUpToggleSession, object: nil) }
                 }
                 return Unmanaged.passUnretained(event)
             },
