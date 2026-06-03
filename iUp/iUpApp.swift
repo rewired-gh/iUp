@@ -6,6 +6,6 @@ struct iUpApp: App {
 
     var body: some Scene {
         // No primary window. Settings scene added in a later task.
-        Settings { EmptyView() }
+        WindowGroup { EmptyView() }
     }
 }
