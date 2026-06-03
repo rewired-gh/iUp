@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8978E05C2FD078290050B50F /* prd.md in Resources */ = {isa = PBXBuildFile; fileRef = 8978E05B2FD078240050B50F /* prd.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -218,7 +217,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8978E05C2FD078290050B50F /* prd.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
