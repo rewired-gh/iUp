@@ -31,6 +31,22 @@ Each user story owns **independent** timing variables. The same letter in differ
 - TempPause: `T_pause`
 - Display-dim while locked: `T_dim`
 
+## Per-feature independence (hard requirement)
+
+Every feature has its **own enable toggle** and its **own independent configuration** (thresholds, options), persisted separately in `Settings`. No feature's config is shared with or derived from another. Turning one off never disables another.
+
+| Feature | Independent on/off | Independent config |
+|---|---|---|
+| Awake | master toggle | + each assertion toggles independently: display-on, system-sleep, network-on |
+| Jiggle | toggle | `T_jiggle`, `U_jiggle`, `V_jiggle` |
+| TempPause | toggle | `T_pause` |
+| Lock | toggle (feature available/unavailable) | unlock hotkey, burn-in interval, auth requirement |
+| Display control | toggle | `T_dim`; internal-dim and external-off each toggle independently |
+| Hotkeys | per-hotkey toggle | each global hotkey configurable/disable-able |
+| App options | each independent | launch-at-login, hide-dock, auto-start-session |
+
+**Interaction with the session (no hidden coupling):** the session activates Awake / Jiggle / TempPause **only if that feature's own toggle is on**. A feature switched off is never activated, even inside an active session. Awake, Jiggle, and TempPause may each be on or off in any combination. Lock and Display control are fully independent of the session and of each other (Lock works with Display control off; Display control only acts while locked but is its own toggle).
+
 ## Architecture
 
 `@main` SwiftUI `App` with `NSApplicationDelegateAdaptor`. AppKit owns the status item, overlay windows, and event taps. SwiftUI used for settings + lock-screen content.
