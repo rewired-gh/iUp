@@ -21,6 +21,7 @@ final class LockController {
 
     private var toggleObserver: Any?
     private var blockerFailObserver: Any?
+    private var forceUnlockObserver: Any?
 
     init(settings: Settings) {
         self.settings = settings
@@ -34,11 +35,20 @@ final class LockController {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.forceUnlock() }
         }
+        forceUnlockObserver = NotificationCenter.default.addObserver(
+            forName: .iUpForceUnlock, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.state == .locked || self.state == .unlocking else { return }
+                self.forceUnlock()
+            }
+        }
     }
 
     deinit {
         if let o = toggleObserver { NotificationCenter.default.removeObserver(o) }
         if let o = blockerFailObserver { NotificationCenter.default.removeObserver(o) }
+        if let o = forceUnlockObserver { NotificationCenter.default.removeObserver(o) }
     }
 
     func toggle() {
@@ -61,14 +71,16 @@ final class LockController {
 
         let msg = "iUp"
         let interval = settings.burnInInterval
+        let debug = settings.debugMode
         guard overlay.showOverlay(contentFactory: { [weak self] _ in
-            AnyView(LockScreenView(message: msg, burnInInterval: interval) {
+            AnyView(LockScreenView(message: msg, burnInInterval: interval, debugEscape: debug) {
                 self?.requestUnlock()
             })
         }) else {
             state = .unlocked
             return
         }
+        inputBlocker.debugEscapeEnabled = settings.debugMode
         inputBlocker.startBlocking()
         state = .locked
         onDidLock?()

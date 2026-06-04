@@ -93,6 +93,11 @@ struct SettingsView: View {
                 Toggle("Launch at login", isOn: $model.launchAtLogin)
                 Toggle("Auto-start session on launch", isOn: $model.autoStartSession)
             }
+            Section {
+                Toggle("Debug mode", isOn: $model.debugMode)
+            } footer: {
+                Text("Allows pressing Esc on the lock screen to unlock immediately without authentication. For testing only.")
+            }
         }
         .formStyle(.grouped)
     }
@@ -159,6 +164,7 @@ final class SettingsModel: ObservableObject {
     var lockEnabled: Bool { get { settings.lockEnabled } set { write(\.lockEnabled, newValue) } }
     var burnInInterval: TimeInterval { get { settings.burnInInterval } set { write(\.burnInInterval, newValue) } }
     var autoStartSession: Bool { get { settings.autoStartSession } set { write(\.autoStartSession, newValue) } }
+    var debugMode: Bool { get { settings.debugMode } set { write(\.debugMode, newValue) } }
     var launchAtLogin: Bool {
         get { settings.launchAtLogin }
         set { write(\.launchAtLogin, newValue); try? loginItem.apply(enabled: newValue) }

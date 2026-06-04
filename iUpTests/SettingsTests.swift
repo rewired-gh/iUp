@@ -28,6 +28,7 @@ struct SettingsTests {
         #expect(s.burnInInterval == 30)
         #expect(s.launchAtLogin == false)
         #expect(s.autoStartSession == false)
+        #expect(s.debugMode == false)
     }
 
     @Test func persistsAcrossInstances() {

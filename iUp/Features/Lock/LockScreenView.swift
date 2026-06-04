@@ -6,6 +6,7 @@ import Combine
 struct LockScreenView: View {
     let message: String
     let burnInInterval: TimeInterval
+    var debugEscape: Bool = false
     let onUnlock: () -> Void
 
     /// Top-left origin of the (single) panel; nil until first laid out (centered).
@@ -43,7 +44,8 @@ struct LockScreenView: View {
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
 
-            Text("Click Unlock, or press ⌃⌥⌘L or Esc")
+            Text(debugEscape ? "Click Unlock, or press ⌃⌥⌘L  ·  Esc force-unlocks (debug)"
+                             : "Click Unlock, or press ⌃⌥⌘L")
                 .font(.system(size: 13, weight: .light))
                 .foregroundStyle(Color(white: 0.4))
         }

@@ -13,6 +13,8 @@ final class InputBlocker {
     /// Unlock hotkey, refreshed before each block. keyCode + Carbon modifier mask.
     var unlockKeyCode: Int64 = 37          // 'L'
     var unlockModifiers: Int = cmdKey | optionKey | controlKey
+    /// Debug-only Escape escape hatch: when true, Esc force-unlocks without auth.
+    var debugEscapeEnabled = false
 
     private static let eventMask: CGEventMask = {
         let types: [CGEventType] = [.keyDown, .keyUp, .flagsChanged, .scrollWheel,
@@ -41,9 +43,11 @@ final class InputBlocker {
                     if m & shiftKey != 0 { match = match && flags.contains(.maskShift) }
                     if m & optionKey != 0 { match = match && flags.contains(.maskAlternate) }
                     if m & controlKey != 0 { match = match && flags.contains(.maskControl) }
-                    // Safety escape hatch: Escape (keyCode 53) always starts an unlock.
-                    if match || keyCode == 53 {
+                    if match {
                         NotificationCenter.default.post(name: .iUpToggleLock, object: nil)
+                    } else if keyCode == 53 && me.debugEscapeEnabled {
+                        // Debug escape hatch: Escape force-unlocks without authentication.
+                        NotificationCenter.default.post(name: .iUpForceUnlock, object: nil)
                     }
                 }
                 return nil

@@ -29,6 +29,7 @@ final class Settings {
         static let burnInInterval = "lock.burnInInterval"
         static let launchAtLogin = "app.launchAtLogin"
         static let autoStartSession = "app.autoStartSession"
+        static let debugMode = "app.debugMode"
     }
 
     private func registerDefaults() {
@@ -51,6 +52,7 @@ final class Settings {
             Key.burnInInterval: 30.0,
             Key.launchAtLogin: false,
             Key.autoStartSession: false,
+            Key.debugMode: false,
         ])
     }
 
@@ -82,4 +84,5 @@ final class Settings {
 
     var launchAtLogin: Bool { get { bool(Key.launchAtLogin) } set { setBool(newValue, Key.launchAtLogin) } }
     var autoStartSession: Bool { get { bool(Key.autoStartSession) } set { setBool(newValue, Key.autoStartSession) } }
+    var debugMode: Bool { get { bool(Key.debugMode) } set { setBool(newValue, Key.debugMode) } }
 }
