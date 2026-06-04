@@ -18,11 +18,9 @@ final class Settings {
         static let jiggleEnabled = "jiggle.enabled"
         static let jiggleIdleStart = "jiggle.idleStart"
         static let jiggleInterval = "jiggle.interval"
-        static let jiggleStopAfter = "jiggle.stopAfter"
         static let tempPauseEnabled = "tempPause.enabled"
         static let tempPauseIdle = "tempPause.idle"
         static let displayControlEnabled = "display.enabled"
-        static let displayDimIdle = "display.dimIdle"
         static let displayInternalDim = "display.internalDim"
         static let displayExternalOff = "display.externalOff"
         static let lockEnabled = "lock.enabled"
@@ -41,11 +39,9 @@ final class Settings {
             Key.jiggleEnabled: true,
             Key.jiggleIdleStart: 60.0,
             Key.jiggleInterval: 30.0,
-            Key.jiggleStopAfter: 300.0,
             Key.tempPauseEnabled: true,
             Key.tempPauseIdle: 60.0,
             Key.displayControlEnabled: true,
-            Key.displayDimIdle: 60.0,
             Key.displayInternalDim: true,
             Key.displayExternalOff: true,
             Key.lockEnabled: true,
@@ -69,13 +65,11 @@ final class Settings {
     var jiggleEnabled: Bool { get { bool(Key.jiggleEnabled) } set { setBool(newValue, Key.jiggleEnabled) } }
     var jiggleIdleStart: TimeInterval { get { dbl(Key.jiggleIdleStart) } set { setDbl(newValue, Key.jiggleIdleStart) } }
     var jiggleInterval: TimeInterval { get { dbl(Key.jiggleInterval) } set { setDbl(newValue, Key.jiggleInterval) } }
-    var jiggleStopAfter: TimeInterval { get { dbl(Key.jiggleStopAfter) } set { setDbl(newValue, Key.jiggleStopAfter) } }
 
     var tempPauseEnabled: Bool { get { bool(Key.tempPauseEnabled) } set { setBool(newValue, Key.tempPauseEnabled) } }
     var tempPauseIdle: TimeInterval { get { dbl(Key.tempPauseIdle) } set { setDbl(newValue, Key.tempPauseIdle) } }
 
     var displayControlEnabled: Bool { get { bool(Key.displayControlEnabled) } set { setBool(newValue, Key.displayControlEnabled) } }
-    var displayDimIdle: TimeInterval { get { dbl(Key.displayDimIdle) } set { setDbl(newValue, Key.displayDimIdle) } }
     var displayInternalDim: Bool { get { bool(Key.displayInternalDim) } set { setBool(newValue, Key.displayInternalDim) } }
     var displayExternalOff: Bool { get { bool(Key.displayExternalOff) } set { setBool(newValue, Key.displayExternalOff) } }
 

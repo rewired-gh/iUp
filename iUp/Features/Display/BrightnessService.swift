@@ -31,6 +31,9 @@ final class BrightnessService: DisplayBackend {
     /// macOS exposes 16 coarse brightness steps via the hardware keys.
     private static let keySteps = 16
     private static let minFraction: Float = 1.0 / Float(keySteps)
+    /// The real backlight level can't be read on macOS 26, so restore goes to a
+    /// fixed, comfortable mid-level (50%) rather than a remembered value.
+    private static let restoreFraction: Float = 0.5
     /// NX_KEYTYPE_BRIGHTNESS_UP / _DOWN from <IOKit/hidsystem/ev_keymap.h>.
     private static let keyBrightnessUp = 2
     private static let keyBrightnessDown = 3
@@ -87,12 +90,14 @@ final class BrightnessService: DisplayBackend {
 
         // 2. Reliable hardware-key simulation.
         if clamped <= Self.minFraction {
-            // Dim to minimum: press brightness-down enough to bottom out.
-            pressBrightnessKey(up: false, times: Self.keySteps)
+            // Dim to the hardware floor: press brightness-down a full sweep (plus a
+            // margin) so the backlight bottoms out from any starting level.
+            pressBrightnessKey(up: false, times: Self.keySteps + 2)
             didKeyDim = true
         } else if didKeyDim {
-            // Restore: only bump up if we actually dimmed. Step up to ~target level.
-            let steps = max(1, Int((clamped * Float(Self.keySteps)).rounded()))
+            // Restore: only bump up if we actually dimmed. The prior level is
+            // unreadable, so step up from the floor to a fixed 50%.
+            let steps = max(1, Int((Self.restoreFraction * Float(Self.keySteps)).rounded()))
             pressBrightnessKey(up: true, times: steps)
             didKeyDim = false
         }

@@ -1,4 +1,7 @@
 import AppKit
+import os.log
+
+private let appLog = Logger(subsystem: "moe.rewired.iUp", category: "AppDelegate")
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -30,19 +33,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         monitor.onUserBecameActive = { [weak self] in
-            guard let self else { return }
-            self.session.userBecameActive()
-            if self.lock.state == .locked { self.display.userActiveWhileLocked() }
+            self?.session.userBecameActive()
         }
         monitor.onTick = { [weak self] idle in
             guard let self, self.inputMonitoringActive else { return }
             self.session.tick(idle: idle)
-            if self.lock.state == .locked { self.display.lockedTick(idle: idle) }
         }
 
         lock.onDidLock = { [weak self] in self?.display.didLock() }
         lock.onWillUnlock = { [weak self] in self?.display.willUnlock() }
-        lock.onAuthBegin = { [weak self] in self?.display.userActiveWhileLocked() }
+        lock.onAuthBegin = { [weak self] in self?.display.prepareForAuth() }
+        lock.onAuthFailed = { [weak self] in self?.display.authDidFail() }
 
         inputTap = InputObservationTap { [weak self] isSynthetic in
             DispatchQueue.main.async { self?.monitor.record(isSynthetic: isSynthetic) }
@@ -128,6 +129,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startInputServicesIfPossible() {
         guard !inputMonitoringActive else { return }
         guard AccessibilityChecker.isEnabled else {
+            if accessibilityPoll == nil {
+                appLog.info("Accessibility not granted — idle features disabled until it is; prompting + polling")
+            }
             AccessibilityChecker.promptIfNeeded()
             startAccessibilityPolling()
             return
@@ -136,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         inputTap?.start()
         hotkey.register()
         inputMonitoringActive = true
+        appLog.info("input services started; monitoring active")
         accessibilityPoll?.invalidate()
         accessibilityPoll = nil
     }

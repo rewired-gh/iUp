@@ -12,10 +12,10 @@ private final class FakeDisplay: DisplayBackend {
 }
 
 struct DisplayControllerTests {
-    private func make(internalDim: Bool = true, externalOff: Bool = true, dimIdle: TimeInterval = 60)
+    private func make(internalDim: Bool = true, externalOff: Bool = true)
         -> (DisplayController, FakeDisplay, Settings) {
         let s = Settings(defaults: UserDefaults(suiteName: "iup.disp.\(UUID().uuidString)")!)
-        s.displayInternalDim = internalDim; s.displayExternalOff = externalOff; s.displayDimIdle = dimIdle
+        s.displayInternalDim = internalDim; s.displayExternalOff = externalOff
         let b = FakeDisplay()
         return (DisplayController(settings: s, backend: b), b, s)
     }
@@ -36,21 +36,21 @@ struct DisplayControllerTests {
         #expect(b.externalOn == false)
     }
 
-    @Test func activityWhileLockedRestoresInternalOnly() {
+    @Test func prepareForAuthRestoresInternalOnly() {
         let (c, b, _) = make()
         b.internalBrightness = 0.7
         c.didLock()
-        c.userActiveWhileLocked()
+        c.prepareForAuth()
         #expect(b.internalBrightness == 0.7)
-        #expect(b.externalOn == false)
+        #expect(b.externalOn == false)   // external stays off during auth
     }
 
-    @Test func lockedIdleReDims() {
-        let (c, b, _) = make(dimIdle: 60)
+    @Test func authFailReDims() {
+        let (c, b, _) = make()
         b.internalBrightness = 0.7
         c.didLock()
-        c.userActiveWhileLocked()
-        c.lockedTick(idle: 60)
+        c.prepareForAuth()
+        c.authDidFail()
         #expect(b.internalBrightness == 0)
     }
 

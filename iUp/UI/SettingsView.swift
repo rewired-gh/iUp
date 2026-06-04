@@ -43,7 +43,6 @@ struct SettingsView: View {
             Section("Timing") {
                 DurationRow("Start after idle", seconds: $model.jiggleIdleStart, range: 5...3600, step: 5)
                 DurationRow("Move every", seconds: $model.jiggleInterval, range: 5...600, step: 5)
-                DurationRow("Stop after extra idle", seconds: $model.jiggleStopAfter, range: 0...86_400, step: 30)
             }
             .disabled(!model.jiggleEnabled)
         }
@@ -79,8 +78,6 @@ struct SettingsView: View {
                 Toggle("Dim built-in display", isOn: $model.displayInternalDim)
                     .disabled(!model.displayControlEnabled)
                 Toggle("Turn off external displays", isOn: $model.displayExternalOff)
-                    .disabled(!model.displayControlEnabled)
-                DurationRow("Re-dim after idle", seconds: $model.displayDimIdle, range: 5...3600, step: 5)
                     .disabled(!model.displayControlEnabled)
             }
         }
@@ -157,11 +154,9 @@ final class SettingsModel: ObservableObject {
     var jiggleEnabled: Bool { get { settings.jiggleEnabled } set { write(\.jiggleEnabled, newValue) } }
     var jiggleIdleStart: TimeInterval { get { settings.jiggleIdleStart } set { write(\.jiggleIdleStart, newValue) } }
     var jiggleInterval: TimeInterval { get { settings.jiggleInterval } set { write(\.jiggleInterval, newValue) } }
-    var jiggleStopAfter: TimeInterval { get { settings.jiggleStopAfter } set { write(\.jiggleStopAfter, newValue) } }
     var tempPauseEnabled: Bool { get { settings.tempPauseEnabled } set { write(\.tempPauseEnabled, newValue) } }
     var tempPauseIdle: TimeInterval { get { settings.tempPauseIdle } set { write(\.tempPauseIdle, newValue) } }
     var displayControlEnabled: Bool { get { settings.displayControlEnabled } set { write(\.displayControlEnabled, newValue) } }
-    var displayDimIdle: TimeInterval { get { settings.displayDimIdle } set { write(\.displayDimIdle, newValue) } }
     var displayInternalDim: Bool { get { settings.displayInternalDim } set { write(\.displayInternalDim, newValue) } }
     var displayExternalOff: Bool { get { settings.displayExternalOff } set { write(\.displayExternalOff, newValue) } }
     var lockEnabled: Bool { get { settings.lockEnabled } set { write(\.lockEnabled, newValue) } }

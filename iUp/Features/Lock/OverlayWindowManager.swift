@@ -60,6 +60,9 @@ final class OverlayWindowManager {
             let frame = screen.frame
             let w = KeyableWindow(contentRect: frame, styleMask: .borderless,
                                   backing: .buffered, defer: false, screen: screen)
+            // NSWindow defaults isReleasedWhenClosed = true; with ARC also retaining
+            // it in `windows`, close() would over-release → crash on a later lock cycle.
+            w.isReleasedWhenClosed = false
             w.setFrame(frame, display: true)
             w.level = shieldLevel
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]

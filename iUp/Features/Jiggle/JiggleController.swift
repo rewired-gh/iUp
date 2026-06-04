@@ -7,8 +7,8 @@ protocol MovePosting {
 }
 
 /// Drives jiggling from the shared idle clock.
-/// Start at idle >= jiggleIdleStart; burst every jiggleInterval; stop at
-/// idle >= jiggleIdleStart + jiggleStopAfter. `reset()` is called on real input.
+/// Start at idle >= jiggleIdleStart; burst every jiggleInterval thereafter.
+/// Jiggling stops only on real input or when the session pauses — both call `reset()`.
 final class JiggleController {
     private let settings: Settings
     private let poster: MovePosting
@@ -22,11 +22,7 @@ final class JiggleController {
 
     func evaluate(idle: TimeInterval) {
         guard settings.jiggleEnabled else { isJiggling = false; return }
-        let start = settings.jiggleIdleStart
-        let stop = start + settings.jiggleStopAfter
-
-        if idle >= stop { isJiggling = false; return }
-        guard idle >= start else { isJiggling = false; return }
+        guard idle >= settings.jiggleIdleStart else { isJiggling = false; return }
 
         if !isJiggling {
             isJiggling = true

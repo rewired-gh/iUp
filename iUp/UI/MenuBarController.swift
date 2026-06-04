@@ -2,7 +2,7 @@ import AppKit
 
 /// Status-bar menu. Session item label reflects state; shows manual Resume when paused.
 @MainActor
-final class MenuBarController {
+final class MenuBarController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
     private let session: SessionController
     private let lock: LockController
@@ -11,6 +11,7 @@ final class MenuBarController {
     private let sessionItem = NSMenuItem()
     private let resumeItem = NSMenuItem()
     private let stateLabelItem = NSMenuItem()
+    private let accessibilityItem = NSMenuItem()
 
     init(session: SessionController, lock: LockController, onOpenSettings: @escaping () -> Void) {
         self.session = session
@@ -18,6 +19,7 @@ final class MenuBarController {
         self.onOpenSettings = onOpenSettings
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: "iUp")
+        super.init()
         buildMenu()
         session.onStateChange = { [weak self] _ in self?.refresh() }
         refresh()
@@ -25,7 +27,14 @@ final class MenuBarController {
 
     private func buildMenu() {
         let menu = NSMenu()
+        menu.delegate = self
         menu.autoenablesItems = false
+
+        accessibilityItem.title = "⚠︎ Grant Accessibility to enable features"
+        accessibilityItem.target = self
+        accessibilityItem.action = #selector(openAccessibility)
+        menu.addItem(accessibilityItem)
+
         stateLabelItem.isEnabled = false
         menu.addItem(stateLabelItem)
         menu.addItem(.separator())
@@ -55,7 +64,10 @@ final class MenuBarController {
         statusItem.menu = menu
     }
 
+    func menuWillOpen(_ menu: NSMenu) { refresh() }
+
     private func refresh() {
+        accessibilityItem.isHidden = AccessibilityChecker.isEnabled
         switch session.state {
         case .off:
             stateLabelItem.title = "Session: Off"
@@ -78,5 +90,9 @@ final class MenuBarController {
     @objc private func resumeSession() { session.resume() }
     @objc private func doLock() { lock.lock() }
     @objc private func openSettings() { onOpenSettings() }
+    @objc private func openAccessibility() {
+        AccessibilityChecker.promptIfNeeded()
+        AccessibilityChecker.openSystemSettings()
+    }
     @objc private func quit() { NSApp.terminate(nil) }
 }

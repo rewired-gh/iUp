@@ -8,10 +8,11 @@ protocol DisplayBackend: AnyObject {
 
 /// Manages displays while locked. Only acts when an internal display exists.
 ///
-/// A single `isDimmed` flag is the source of truth so the built-in display is
-/// dimmed and restored exactly once per idle cycle. Without it, the periodic
-/// `lockedTick` (every 0.25s) would re-issue the dim continuously — flooding the
-/// backlight with changes — and restore could fire when nothing was dimmed.
+/// Lifecycle is simple: dim once on lock, restore once on unlock. The only other
+/// transitions are around authentication — brightness is restored so the Touch ID /
+/// password dialog is visible, and re-dimmed if authentication fails and the screen
+/// stays locked. A single `isDimmed` flag guards each transition so brightness is
+/// never driven more than once per state change.
 final class DisplayController {
     private let settings: Settings
     private let backend: DisplayBackend
@@ -32,16 +33,17 @@ final class DisplayController {
         if settings.displayExternalOff { backend.setExternalDisplays(on: false) }
     }
 
-    /// Real user input while locked → restore internal brightness (once).
-    func userActiveWhileLocked() {
+    /// Authentication is starting → restore brightness so the Touch ID / password
+    /// dialog is visible. Keeps `savedBrightness` so a failed attempt can re-dim.
+    func prepareForAuth() {
         guard settings.displayControlEnabled, isAvailable, settings.displayInternalDim else { return }
         restore()
     }
 
-    /// Re-idle while locked → dim again (only if not already dimmed).
-    func lockedTick(idle: TimeInterval) {
+    /// Authentication failed and the screen stays locked → dim again.
+    func authDidFail() {
         guard settings.displayControlEnabled, isAvailable, settings.displayInternalDim else { return }
-        if idle >= settings.displayDimIdle { dim() }
+        dim()
     }
 
     func willUnlock() {

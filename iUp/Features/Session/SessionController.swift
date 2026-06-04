@@ -1,4 +1,7 @@
 import Foundation
+import os.log
+
+private let sessionLog = Logger(subsystem: "moe.rewired.iUp", category: "Session")
 
 protocol AwakeDriving: AnyObject {
     func activate()
@@ -31,6 +34,7 @@ final class SessionController {
 
     private func set(_ new: SessionState) {
         guard new != state else { return }
+        sessionLog.info("state \(String(describing: self.state), privacy: .public) -> \(String(describing: new), privacy: .public)")
         state = new
         onStateChange?(new)
     }

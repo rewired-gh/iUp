@@ -10,7 +10,7 @@ private final class FakePoster: MovePosting {
 struct JiggleControllerTests {
     private func settings() -> Settings {
         let s = Settings(defaults: UserDefaults(suiteName: "iup.jig.\(UUID().uuidString)")!)
-        s.jiggleIdleStart = 60; s.jiggleInterval = 30; s.jiggleStopAfter = 300
+        s.jiggleIdleStart = 60; s.jiggleInterval = 30
         return s
     }
 
@@ -34,15 +34,17 @@ struct JiggleControllerTests {
         #expect(p.burstCount == 2)
     }
 
-    @Test func stopsAfterIdleStartPlusStopAfter() {
+    @Test func keepsJigglingWhileIdleGrows() {
         let p = FakePoster()
         let c = JiggleController(settings: settings(), poster: p)
         c.evaluate(idle: 60)
+        #expect(p.burstCount == 1)
         c.evaluate(idle: 360)
-        #expect(c.isJiggling == false)
-        let before = p.burstCount
-        c.evaluate(idle: 400)
-        #expect(p.burstCount == before)
+        #expect(c.isJiggling == true)
+        #expect(p.burstCount == 2)   // bursts again once interval elapsed
+        c.evaluate(idle: 3600)
+        #expect(c.isJiggling == true)
+        #expect(p.burstCount == 3)
     }
 
     @Test func resetReturnsToIdleState() {

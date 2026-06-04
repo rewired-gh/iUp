@@ -18,6 +18,9 @@ final class LockController {
     /// Called when an unlock attempt begins, before the auth dialog appears, so the
     /// display can be brightened enough to show it.
     var onAuthBegin: (() -> Void)?
+    /// Called when an unlock attempt fails and the screen stays locked, so the
+    /// display can be dimmed again.
+    var onAuthFailed: (() -> Void)?
 
     private var toggleObserver: Any?
     private var blockerFailObserver: Any?
@@ -99,6 +102,7 @@ final class LockController {
                 overlay.raiseShield()
                 inputBlocker.startBlocking()
                 state = .locked
+                onAuthFailed?()
             }
         }
     }
