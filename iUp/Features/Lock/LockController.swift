@@ -15,6 +15,9 @@ final class LockController {
     /// Display hooks — bound by DisplayController in app wiring (Display phase).
     var onDidLock: (() -> Void)?
     var onWillUnlock: (() -> Void)?
+    /// Called when an unlock attempt begins, before the auth dialog appears, so the
+    /// display can be brightened enough to show it.
+    var onAuthBegin: (() -> Void)?
 
     private var toggleObserver: Any?
     private var blockerFailObserver: Any?
@@ -75,10 +78,13 @@ final class LockController {
         guard state == .locked, state.canTransition(to: .unlocking) else { return }
         state = .unlocking
         inputBlocker.stopBlocking()
+        overlay.lowerForAuth()   // ensure the Touch ID / password dialog is visible
+        onAuthBegin?()           // restore brightness so the dialog can be seen
         Task { @MainActor in
             let ok = await authenticator.authenticate()
             if ok { completeUnlock() }
             else {
+                overlay.raiseShield()
                 inputBlocker.startBlocking()
                 state = .locked
             }

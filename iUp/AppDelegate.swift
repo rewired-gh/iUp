@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         lock.onDidLock = { [weak self] in self?.display.didLock() }
         lock.onWillUnlock = { [weak self] in self?.display.willUnlock() }
+        lock.onAuthBegin = { [weak self] in self?.display.userActiveWhileLocked() }
 
         inputTap = InputObservationTap { [weak self] isSynthetic in
             DispatchQueue.main.async { self?.monitor.record(isSynthetic: isSynthetic) }

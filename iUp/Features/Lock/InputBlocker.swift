@@ -41,7 +41,8 @@ final class InputBlocker {
                     if m & shiftKey != 0 { match = match && flags.contains(.maskShift) }
                     if m & optionKey != 0 { match = match && flags.contains(.maskAlternate) }
                     if m & controlKey != 0 { match = match && flags.contains(.maskControl) }
-                    if match {
+                    // Safety escape hatch: Escape (keyCode 53) always starts an unlock.
+                    if match || keyCode == 53 {
                         NotificationCenter.default.post(name: .iUpToggleLock, object: nil)
                     }
                 }

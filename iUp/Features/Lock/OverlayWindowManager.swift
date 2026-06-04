@@ -1,6 +1,13 @@
 import AppKit
 import SwiftUI
 
+/// Borderless window that can still become key/main so the on-screen Unlock
+/// button and any focused controls receive events.
+final class KeyableWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
 /// Creates one borderless shield-level window per screen and recreates them on
 /// screen-parameter changes. `contentFactory` builds SwiftUI content per screen index.
 final class OverlayWindowManager {
@@ -15,6 +22,8 @@ final class OverlayWindowManager {
         dismissOverlay()
         createWindows()
         guard !windows.isEmpty else { return false }
+        NSApp.activate(ignoringOtherApps: true)
+        windows.first?.makeKeyAndOrderFront(nil)
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
@@ -28,6 +37,17 @@ final class OverlayWindowManager {
         windows.removeAll()
     }
 
+    /// Drop the overlay below system panels so the Touch ID / password dialog is
+    /// visible and interactive during authentication.
+    func lowerForAuth() {
+        for w in windows { w.level = .normal }
+    }
+
+    /// Raise the overlay back to shield level (e.g. after a failed unlock).
+    func raiseShield() {
+        for w in windows { w.level = shieldLevel }
+    }
+
     private func recreate() {
         for w in windows { w.orderOut(nil); w.contentView = nil }
         windows.removeAll()
@@ -38,8 +58,8 @@ final class OverlayWindowManager {
         guard let factory = contentFactory else { return }
         for (index, screen) in NSScreen.screens.enumerated() {
             let frame = screen.frame
-            let w = NSWindow(contentRect: frame, styleMask: .borderless,
-                             backing: .buffered, defer: false, screen: screen)
+            let w = KeyableWindow(contentRect: frame, styleMask: .borderless,
+                                  backing: .buffered, defer: false, screen: screen)
             w.setFrame(frame, display: true)
             w.level = shieldLevel
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
