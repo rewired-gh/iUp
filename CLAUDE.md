@@ -1,0 +1,61 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+iUp — a macOS menu-bar utility (Amphetamine + Lockpaw style): keeps the Mac awake, simulates cursor activity when idle, auto-pauses on prolonged idle, and provides a simulated lock screen with display dimming. Menu-bar accessory app (`LSUIElement`), non-sandboxed, distributed Developer ID / notarized. Target macOS 26.5, Swift 5, bundle id `moe.rewired.iUp`.
+
+Reference source for the hard parts lives outside this repo at `../lockpaw/` (lock overlay, input blocking, Touch ID, hotkeys) and `../Jiggler/` (cursor jiggle, idle). When touching those subsystems, read the reference rather than guessing — the platform behavior is subtle.
+
+## Commands
+
+Use the `Makefile` (not Xcode ⌘R) — it builds to a stable `./build/iUp.app` so the **Accessibility grant persists across rebuilds** (DerivedData paths change and lose the grant):
+
+- `make run` — build to `./build/iUp.app` and launch a fresh instance
+- `make build` — build only
+- `make test` — full unit suite
+- `make stop` — quit a running instance (safety net if the lock screen traps you)
+- `make accessibility` / `make reveal` — open the Accessibility pane / reveal the app to grant permission
+
+Test commands directly:
+- All tests: `xcodebuild test -scheme iUp -destination 'platform=macOS' -only-testing:iUpTests`
+- One suite: append `/SuiteName`, e.g. `-only-testing:iUpTests/SessionControllerTests`
+- Tests use **Swift Testing** (`import Testing`, `@Test`, `#expect`) — not XCTest.
+
+The project uses **`PBXFileSystemSynchronizedRootGroup`**: any `.swift` added under `iUp/` or `iUpTests/` joins the target automatically — do NOT edit `project.pbxproj` to register source files. Info.plist keys are set as `INFOPLIST_KEY_*` build settings (`GENERATE_INFOPLIST_FILE = YES`; no standalone Info.plist).
+
+There is no separate linter/formatter configured — build warnings are the lint signal. Commit messages follow Conventional Commits (`fix:`, `feat:`, `docs:`, `chore:`).
+
+Note: `xcodebuild` is authoritative for build/test status. In-editor SourceKit often shows stale "Cannot find type" errors across files in this project — ignore those if `xcodebuild` succeeds.
+
+## Architecture
+
+`iUpApp` (`@main`) hosts only an empty `SwiftUI.Settings` scene and an `AppDelegate` adaptor. `AppDelegate` is the composition root: it builds every controller, wires them, owns the timers/observers, and is the only `@MainActor` glue layer.
+
+**The spine is `Core/ActivityMonitor`** — the single source of truth for the user-idle clock. It exposes `idle` (seconds since last *real* input) driven by a monotonic `Clock` (`systemUptime`, not wall-clock — robust over long uptime / clock changes). Every timing feature reads its clock from here. Two callbacks (`onUserBecameActive`, `onTick`) fan out to controllers. A 0.25s `DispatchSourceTimer` in `AppDelegate` calls `tick()`.
+
+**「Simulated input does not count」 is enforced in exactly one place.** Synthetic cursor events posted by `Jiggle/CGMovePoster` are tagged via `Core/SyntheticTag` (`eventSourceUserData == iUpSyntheticMagic`). `System/InputObservationTap` (listen-only session tap) reads that tag and passes `isSynthetic` to `ActivityMonitor.record`, which ignores tagged events. Do not add another idle/activity source — route everything through `ActivityMonitor`.
+
+**Feature controllers** (each its own enable toggle + thresholds in `Core/Settings`; no shared config — per-feature independence is a hard requirement):
+- `Features/Awake/AwakeController` — `IOPMAssertion`s; display/system/network each toggle independently. `reapply()` re-syncs assertions live when settings change.
+- `Features/Jiggle/` — `JiggleMath` is pure, deterministic (seeded RNG), coordinate-agnostic and unit-tested; `JiggleController` decides start/stop/burst from idle; `CGMovePoster` posts the real events **in global CG/display coordinates** (`CGEvent(source:nil).location` + `CGDisplayBounds`) — mixing in Cocoa `NSScreen.frame` coords breaks jiggle (different origin).
+- `Features/Session/SessionController` — owns the awake "session" state machine (`off → active ⇄ pausedByIdle`); TempPause policy releases everything at idle so the Mac may sleep, and resumes on input / system wake / manual menu action.
+- `Features/Lock/` — `LockState` machine; `OverlayWindowManager` (per-screen black shield-level windows); `InputBlocker` (session tap swallowing input); `Authenticator` (Touch ID / password); `LockController` coordinates them.
+- `Features/Display/DisplayController` — dims the built-in display while locked; single `isDimmed` flag (so the 0.25s tick can't re-issue the dim repeatedly). `BrightnessService` is best-effort: the private DisplayServices/CoreDisplay absolute-brightness APIs are no-ops for third-party apps on macOS 26, so it *also* simulates the brightness hardware key to actually move the backlight.
+
+**System integration** (`System/`): `AccessibilityChecker`, `HotkeyManager` (global ⌃⌥⌘L lock / ⌃⌥⌘S session, listen-only tap on a dedicated thread), `InputObservationTap`, `LoginItem` (`SMAppService`). **UI** (`UI/`): `MenuBarController` (NSStatusItem), `SettingsView`/`SettingsModel`, `SettingsWindowController`.
+
+### Cross-cutting things that bite
+
+- **Accessibility-gated startup.** Event taps + hotkeys + jiggle need Accessibility. `AppDelegate.startInputServicesIfPossible()` prompts, then **polls (1.5s) + rechecks on `didBecomeActive`** so features start the moment permission is granted, no relaunch. Idle-driven logic is suppressed (`inputMonitoringActive`) until then, so a frozen clock can't false-trigger TempPause. Revocation mid-run is detected (`.iUpInputServicesStalled`) and re-acquired.
+- **Lock unlock flow.** The overlay sits at `CGShieldingWindowLevel`. During authentication `LockController` lowers it to `.statusBar` (covers the menu bar but lets the Touch ID dialog show) and restores brightness — otherwise the auth dialog is hidden behind the black overlay and the user is trapped. There is a debug-only Esc force-unlock (gated by `Settings.debugMode`). A userland app cannot block the OS Force-Quit (⌘⌥⎋ held) or power button.
+- **Live settings.** `SettingsModel.write` posts `.iUpSettingsChanged`; `AppDelegate.reconcileSettings()` re-applies to running features. Settings persist immediately via `UserDefaults`.
+- **Name collision.** The app defines a `Settings` class; the SwiftUI `Settings` scene must be written fully-qualified as `SwiftUI.Settings`.
+- **Lock screen colors** match Lockpaw: dim white on black (`.white.opacity(...)`), no bright/prominent controls.
+
+Side-effecting units (event taps, overlay, brightness, auth, login item) are thin shells verified by build + manual run; pure logic (`ActivityMonitor`, `SessionController`, `JiggleMath`, `LockState`, `BurnIn`, `Awake`/`Display`/`Jiggle` controllers, `Settings`, `LoginItem`) is unit-tested with injected fakes/clock.
+
+## Docs
+
+Design spec, implementation plan, and open follow-ups live in `docs/superpowers/` (`specs/`, `plans/`, `iup-known-issues.md`). Read `iup-known-issues.md` before changing display/brightness or accessibility recovery — it records deliberate limitations (e.g. brightness manual-override can't be detected on macOS 26).
