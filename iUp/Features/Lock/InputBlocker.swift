@@ -22,6 +22,9 @@ final class InputBlocker {
         return types.reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
     }()
 
+    /// Must be called on the main thread (LockController is @MainActor): the tap
+    /// source is added to / removed from CFRunLoopGetCurrent(), so start and stop
+    /// must share the main run loop.
     func startBlocking() {
         guard !isBlocking else { return }
         eventTap = CGEvent.tapCreate(
@@ -37,12 +40,14 @@ final class InputBlocker {
                 if type == .keyDown {
                     let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
                     let flags = event.flags
-                    var match = keyCode == me.unlockKeyCode
                     let m = me.unlockModifiers
-                    if m & cmdKey != 0 { match = match && flags.contains(.maskCommand) }
-                    if m & shiftKey != 0 { match = match && flags.contains(.maskShift) }
-                    if m & optionKey != 0 { match = match && flags.contains(.maskAlternate) }
-                    if m & controlKey != 0 { match = match && flags.contains(.maskControl) }
+                    func required(_ mask: Int) -> Bool { m & mask != 0 }
+                    // Exact match: required modifiers present AND no extra modifiers.
+                    let match = keyCode == me.unlockKeyCode
+                        && flags.contains(.maskCommand)   == required(cmdKey)
+                        && flags.contains(.maskShift)     == required(shiftKey)
+                        && flags.contains(.maskAlternate) == required(optionKey)
+                        && flags.contains(.maskControl)   == required(controlKey)
                     let noModifiers = !flags.contains(.maskCommand) && !flags.contains(.maskAlternate)
                         && !flags.contains(.maskControl) && !flags.contains(.maskShift)
                     if match {

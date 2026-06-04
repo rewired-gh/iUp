@@ -89,9 +89,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Apply live settings changes to running features, resetting state where needed.
     private func reconcileSettings() {
-        if session.state == .active {
+        switch session.state {
+        case .active:
             awake.reapply()
             jiggle.reset()
+        case .pausedByIdle:
+            // If the user just turned TempPause off, don't stay stuck paused.
+            if !settings.tempPauseEnabled { session.resume() }
+        case .off:
+            break
         }
         if lock.state == .locked {
             display.reapplyWhileLocked()
