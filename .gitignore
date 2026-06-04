@@ -1,0 +1,11 @@
+# Tooling / agent scratch
+.claude/
+.agents/
+skills-lock.json
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+.DS_Store
+build/
+DerivedData/
