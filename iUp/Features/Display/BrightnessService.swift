@@ -10,9 +10,9 @@ import os.log
 ///     signed contexts; harmless no-op otherwise).
 ///  2. Brightness hardware-key simulation, which reliably drives the real backlight.
 ///
-/// Restore only bumps the backlight up if we previously dimmed it (so it never
-/// raises brightness that was already at its minimum). External-display control is
-/// best-effort (PRD allows it to no-op).
+/// Brightness is only ever driven down (dim on lock). It is never raised back —
+/// the user restores brightness manually. External-display control is best-effort
+/// (PRD allows it to no-op).
 final class BrightnessService: DisplayBackend {
     private static let log = Logger(subsystem: "moe.rewired.iUp", category: "Brightness")
 
@@ -31,14 +31,9 @@ final class BrightnessService: DisplayBackend {
     /// macOS exposes 16 coarse brightness steps via the hardware keys.
     private static let keySteps = 16
     private static let minFraction: Float = 1.0 / Float(keySteps)
-    /// The real backlight level can't be read on macOS 26, so restore goes to a
-    /// fixed, comfortable mid-level (50%) rather than a remembered value.
-    private static let restoreFraction: Float = 0.5
     /// NX_KEYTYPE_BRIGHTNESS_UP / _DOWN from <IOKit/hidsystem/ev_keymap.h>.
     private static let keyBrightnessUp = 2
     private static let keyBrightnessDown = 3
-    /// True while we have driven the backlight down and not yet restored it.
-    private var didKeyDim = false
 
     init() {
         let ds = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW)
@@ -88,23 +83,12 @@ final class BrightnessService: DisplayBackend {
         _ = dsSet?(id, clamped)
         cdSet?(id, Double(clamped))
 
-        // 2. Reliable hardware-key simulation.
+        // 2. Reliable hardware-key simulation — dim only. Press brightness-down a
+        // full sweep (plus a margin) so the backlight bottoms out from any level.
+        // Brightness is never raised here; the user restores it manually.
         if clamped <= Self.minFraction {
-            // Dim to the hardware floor: press brightness-down a full sweep (plus a
-            // margin) so the backlight bottoms out from any starting level.
             pressBrightnessKey(up: false, times: Self.keySteps + 2)
-            didKeyDim = true
-        } else if didKeyDim {
-            // Restore: only bump up if we actually dimmed. The prior level is
-            // unreadable, so step up from the floor to a fixed 50%.
-            let steps = max(1, Int((Self.restoreFraction * Float(Self.keySteps)).rounded()))
-            pressBrightnessKey(up: true, times: steps)
-            didKeyDim = false
         }
-    }
-
-    func setExternalDisplays(on: Bool) {
-        Self.log.info("setExternalDisplays(on: \(on)) — best-effort no-op")
     }
 
     // MARK: - Brightness key simulation

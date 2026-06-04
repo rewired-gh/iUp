@@ -17,6 +17,10 @@ final class SettingsWindowController {
             let w = NSWindow(contentViewController: hosting)
             w.title = "iUp Settings"
             w.styleMask = [.titled, .closable]
+            // Drop the bold title text so the TabView's tab strip reads as the single
+            // header instead of sitting under a second one.
+            w.titleVisibility = .hidden
+            w.titlebarAppearsTransparent = true
             w.isReleasedWhenClosed = false
             w.center()
             window = w

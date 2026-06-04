@@ -20,9 +20,7 @@ final class Settings {
         static let jiggleInterval = "jiggle.interval"
         static let tempPauseEnabled = "tempPause.enabled"
         static let tempPauseIdle = "tempPause.idle"
-        static let displayControlEnabled = "display.enabled"
         static let displayInternalDim = "display.internalDim"
-        static let displayExternalOff = "display.externalOff"
         static let lockEnabled = "lock.enabled"
         static let burnInInterval = "lock.burnInInterval"
         static let launchAtLogin = "app.launchAtLogin"
@@ -41,9 +39,7 @@ final class Settings {
             Key.jiggleInterval: 30.0,
             Key.tempPauseEnabled: true,
             Key.tempPauseIdle: 60.0,
-            Key.displayControlEnabled: true,
             Key.displayInternalDim: true,
-            Key.displayExternalOff: true,
             Key.lockEnabled: true,
             Key.burnInInterval: 30.0,
             Key.launchAtLogin: false,
@@ -69,9 +65,7 @@ final class Settings {
     var tempPauseEnabled: Bool { get { bool(Key.tempPauseEnabled) } set { setBool(newValue, Key.tempPauseEnabled) } }
     var tempPauseIdle: TimeInterval { get { dbl(Key.tempPauseIdle) } set { setDbl(newValue, Key.tempPauseIdle) } }
 
-    var displayControlEnabled: Bool { get { bool(Key.displayControlEnabled) } set { setBool(newValue, Key.displayControlEnabled) } }
     var displayInternalDim: Bool { get { bool(Key.displayInternalDim) } set { setBool(newValue, Key.displayInternalDim) } }
-    var displayExternalOff: Bool { get { bool(Key.displayExternalOff) } set { setBool(newValue, Key.displayExternalOff) } }
 
     var lockEnabled: Bool { get { bool(Key.lockEnabled) } set { setBool(newValue, Key.lockEnabled) } }
     var burnInInterval: TimeInterval { get { dbl(Key.burnInInterval) } set { setDbl(newValue, Key.burnInInterval) } }

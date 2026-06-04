@@ -73,12 +73,10 @@ struct SettingsView: View {
             } footer: {
                 Text("Lock with the menu or ⌃⌥⌘L. Unlock with Touch ID, password, or the same shortcut.")
             }
-            Section("Displays while locked") {
-                Toggle("Control displays", isOn: $model.displayControlEnabled)
-                Toggle("Dim built-in display", isOn: $model.displayInternalDim)
-                    .disabled(!model.displayControlEnabled)
-                Toggle("Turn off external displays", isOn: $model.displayExternalOff)
-                    .disabled(!model.displayControlEnabled)
+            Section {
+                Toggle("Dim built-in display while locked", isOn: $model.displayInternalDim)
+            } footer: {
+                Text("Lowers the built-in display to its minimum while the lock screen is shown. Brightness is not changed back on unlock — raise it yourself.")
             }
         }
         .formStyle(.grouped)
@@ -156,9 +154,7 @@ final class SettingsModel: ObservableObject {
     var jiggleInterval: TimeInterval { get { settings.jiggleInterval } set { write(\.jiggleInterval, newValue) } }
     var tempPauseEnabled: Bool { get { settings.tempPauseEnabled } set { write(\.tempPauseEnabled, newValue) } }
     var tempPauseIdle: TimeInterval { get { settings.tempPauseIdle } set { write(\.tempPauseIdle, newValue) } }
-    var displayControlEnabled: Bool { get { settings.displayControlEnabled } set { write(\.displayControlEnabled, newValue) } }
     var displayInternalDim: Bool { get { settings.displayInternalDim } set { write(\.displayInternalDim, newValue) } }
-    var displayExternalOff: Bool { get { settings.displayExternalOff } set { write(\.displayExternalOff, newValue) } }
     var lockEnabled: Bool { get { settings.lockEnabled } set { write(\.lockEnabled, newValue) } }
     var burnInInterval: TimeInterval { get { settings.burnInInterval } set { write(\.burnInInterval, newValue) } }
     var autoStartSession: Bool { get { settings.autoStartSession } set { write(\.autoStartSession, newValue) } }
