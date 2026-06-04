@@ -2282,7 +2282,7 @@ final class MenuBarController {
         self.session = session
         self.lock = lock
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: "iUp")
+        statusItem.button?.image = NSImage(systemSymbolName: "apple.meditate", accessibilityDescription: "iUp")
         buildMenu()
         session.onStateChange = { [weak self] _ in self?.refresh() }
         refresh()
