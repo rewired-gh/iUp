@@ -9,6 +9,7 @@ final class InputObservationTap {
     private var eventTap: CFMachPort?
     private var thread: Thread?
     private var runLoop: CFRunLoop?
+    private(set) var isRunning = false
     private let onEvent: (_ isSynthetic: Bool) -> Void
 
     init(onEvent: @escaping (_ isSynthetic: Bool) -> Void) { self.onEvent = onEvent }
@@ -21,6 +22,7 @@ final class InputObservationTap {
     }()
 
     func start() {
+        guard !isRunning else { return }
         guard AXIsProcessTrusted() else { Self.log.warning("no accessibility"); return }
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
@@ -29,7 +31,13 @@ final class InputObservationTap {
                 guard let refcon else { return Unmanaged.passUnretained(event) }
                 let me = Unmanaged<InputObservationTap>.fromOpaque(refcon).takeUnretainedValue()
                 if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    if let tap = me.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    if let tap = me.eventTap {
+                        CGEvent.tapEnable(tap: tap, enable: true)
+                        if !CGEvent.tapIsEnabled(tap: tap) {
+                            // Could not re-enable — Accessibility likely revoked.
+                            NotificationCenter.default.post(name: .iUpInputServicesStalled, object: nil)
+                        }
+                    }
                     return Unmanaged.passUnretained(event)
                 }
                 me.onEvent(event.isSyntheticFromiUp)
@@ -50,12 +58,14 @@ final class InputObservationTap {
         t.qualityOfService = .userInteractive
         t.start()
         thread = t
+        isRunning = true
     }
 
     func stop() {
         if let tap = eventTap { CGEvent.tapEnable(tap: tap, enable: false) }
         if let rl = runLoop { CFRunLoopStop(rl) }
         eventTap = nil; runLoop = nil; thread = nil
+        isRunning = false
     }
 
     deinit { stop() }

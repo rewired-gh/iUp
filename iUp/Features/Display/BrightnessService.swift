@@ -25,20 +25,32 @@ final class BrightnessService: DisplayBackend {
     private let dsSet: DSSet?
     private let cdGet: CDGet?
     private let cdSet: CDSet?
+    private let dsHandle: UnsafeMutableRawPointer?
+    private let cdHandle: UnsafeMutableRawPointer?
 
     /// macOS exposes 16 coarse brightness steps via the hardware keys.
     private static let keySteps = 16
     private static let minFraction: Float = 1.0 / Float(keySteps)
+    /// NX_KEYTYPE_BRIGHTNESS_UP / _DOWN from <IOKit/hidsystem/ev_keymap.h>.
+    private static let keyBrightnessUp = 2
+    private static let keyBrightnessDown = 3
     /// True while we have driven the backlight down and not yet restored it.
     private var didKeyDim = false
 
     init() {
         let ds = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW)
         let cd = dlopen("/System/Library/Frameworks/CoreDisplay.framework/CoreDisplay", RTLD_NOW)
+        dsHandle = ds
+        cdHandle = cd
         dsGet = dlsym(ds, "DisplayServicesGetBrightness").map { unsafeBitCast($0, to: DSGet.self) }
         dsSet = dlsym(ds, "DisplayServicesSetBrightness").map { unsafeBitCast($0, to: DSSet.self) }
         cdGet = dlsym(cd, "CoreDisplay_Display_GetUserBrightness").map { unsafeBitCast($0, to: CDGet.self) }
         cdSet = dlsym(cd, "CoreDisplay_Display_SetUserBrightness").map { unsafeBitCast($0, to: CDSet.self) }
+    }
+
+    deinit {
+        if let dsHandle { dlclose(dsHandle) }
+        if let cdHandle { dlclose(cdHandle) }
     }
 
     /// The built-in display, or nil if this Mac has none (feature unavailable).
@@ -94,7 +106,7 @@ final class BrightnessService: DisplayBackend {
 
     /// Post N brightness up/down hardware key presses via NSSystemDefined events.
     private func pressBrightnessKey(up: Bool, times: Int) {
-        let key = up ? 2 : 3  // NX_KEYTYPE_BRIGHTNESS_UP : NX_KEYTYPE_BRIGHTNESS_DOWN
+        let key = up ? Self.keyBrightnessUp : Self.keyBrightnessDown
         for _ in 0..<times {
             postAuxKey(key, keyDown: true)
             postAuxKey(key, keyDown: false)

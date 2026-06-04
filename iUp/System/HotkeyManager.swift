@@ -12,12 +12,14 @@ final class HotkeyManager {
     private var tapRunLoop: CFRunLoop?
     private(set) var isRegistered = false
 
+    // Hotkeys are fixed (not user-configurable yet); `let` so the tap-thread
+    // callback can read them without a data race.
     // Lock hotkey: ⌃⌥⌘L
-    var lockKeyCode: Int = 37
-    var lockModifiers: Int = cmdKey | optionKey | controlKey
+    let lockKeyCode = 37
+    let lockModifiers = cmdKey | optionKey | controlKey
     // Session-toggle hotkey: ⌃⌥⌘S
-    var sessionKeyCode: Int = 1
-    var sessionModifiers: Int = cmdKey | optionKey | controlKey
+    let sessionKeyCode = 1
+    let sessionModifiers = cmdKey | optionKey | controlKey
 
     private static func exactMatch(_ event: CGEvent, keyCode: Int, modifiers: Int) -> Bool {
         guard Int(event.getIntegerValueField(.keyboardEventKeycode)) == keyCode else { return false }
@@ -40,7 +42,13 @@ final class HotkeyManager {
                 guard let refcon else { return Unmanaged.passUnretained(event) }
                 let me = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
                 if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    if let tap = me.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    if let tap = me.eventTap {
+                        CGEvent.tapEnable(tap: tap, enable: true)
+                        if !CGEvent.tapIsEnabled(tap: tap) {
+                            // Could not re-enable — Accessibility likely revoked.
+                            NotificationCenter.default.post(name: .iUpInputServicesStalled, object: nil)
+                        }
+                    }
                     return Unmanaged.passUnretained(event)
                 }
                 if HotkeyManager.exactMatch(event, keyCode: me.lockKeyCode, modifiers: me.lockModifiers) {

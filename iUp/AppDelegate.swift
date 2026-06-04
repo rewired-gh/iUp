@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var lock = LockController(settings: settings)
     private lazy var display = DisplayController(settings: settings, backend: BrightnessService())
     private lazy var hotkey = HotkeyManager()
+    private let loginItem = LoginItem()
     private lazy var settingsModel = SettingsModel(settings: settings)
     private lazy var settingsWindow = SettingsWindowController(model: settingsModel)
     private var menuBar: MenuBarController?
@@ -79,12 +80,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forName: .iUpSettingsChanged, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.reconcileSettings() } }
 
+        // If an input tap can no longer be enabled (Accessibility revoked at runtime),
+        // tear down and re-acquire — recovering automatically once it's re-granted.
+        NotificationCenter.default.addObserver(
+            forName: .iUpInputServicesStalled, object: nil, queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.handleInputServicesStalled() } }
+
+        // Reflect the real login-item registration state into Settings (the user may
+        // have removed it in System Settings).
+        settings.launchAtLogin = loginItem.isEnabled
+
         menuBar = MenuBarController(session: session, lock: lock,
                                     onOpenSettings: { [weak self] in self?.settingsWindow.show() })
 
         startInputServicesIfPossible()
 
         if settings.autoStartSession { session.start() }
+    }
+
+    private func handleInputServicesStalled() {
+        guard inputMonitoringActive else { return }
+        inputMonitoringActive = false
+        inputTap?.stop()
+        hotkey.unregister()
+        startInputServicesIfPossible()   // restarts if still trusted, else prompts + polls
     }
 
     /// Apply live settings changes to running features, resetting state where needed.

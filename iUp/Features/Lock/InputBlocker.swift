@@ -16,6 +16,8 @@ final class InputBlocker {
     /// Debug-only Escape escape hatch: when true, Esc force-unlocks without auth.
     var debugEscapeEnabled = false
 
+    private static let escapeKeyCode: Int64 = 53
+
     private static let eventMask: CGEventMask = {
         let types: [CGEventType] = [.keyDown, .keyUp, .flagsChanged, .scrollWheel,
                                     .tabletPointer, .tabletProximity]
@@ -52,7 +54,7 @@ final class InputBlocker {
                         && !flags.contains(.maskControl) && !flags.contains(.maskShift)
                     if match {
                         NotificationCenter.default.post(name: .iUpToggleLock, object: nil)
-                    } else if keyCode == 53 && noModifiers && me.debugEscapeEnabled {
+                    } else if keyCode == InputBlocker.escapeKeyCode && noModifiers && me.debugEscapeEnabled {
                         // Debug escape hatch: plain Escape force-unlocks without auth.
                         // (⌘⌥⎋ Force Quit is keyCode 53 *with* modifiers — it falls through
                         // and is swallowed like every other key, matching Lockpaw.)

@@ -50,6 +50,12 @@ final class JiggleController {
 /// throughout — matching how mouse events are posted. Mirrors Jiggler's approach.
 /// Shell: verified by build + manual run.
 final class CGMovePoster: MovePosting {
+    /// A burst is ~0.5s of motion: `stepCount` moves spaced `stepDelay` apart.
+    private static let stepCount = 35
+    private static let stepDelayMicros: UInt32 = 14_000
+    private static let driftTolerance: CGFloat = 30   // max per-axis drift per step (points)
+    private static let screenInset: CGFloat = 3       // keep off the very edge
+
     func postBurst() {
         guard let source = CGEventSource(stateID: .hidSystemState) else { return }
         let old = source.localEventsSuppressionInterval
@@ -61,16 +67,16 @@ final class CGMovePoster: MovePosting {
         var rng = SystemRandomNumberGenerator()
         var current = CGEvent(source: nil)?.location ?? CGPoint(x: screens[0].midX, y: screens[0].midY)
 
-        for i in 0..<35 {
+        for i in 0..<Self.stepCount {
             guard let next = JiggleMath.nextPoint(from: current, avoiding: current,
-                                                  screens: screens, tolerance: 30,
-                                                  inset: 3, using: &rng) else { break }
+                                                  screens: screens, tolerance: Self.driftTolerance,
+                                                  inset: Self.screenInset, using: &rng) else { break }
             let e = CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
                             mouseCursorPosition: next, mouseButton: .left)
             e?.tagAsSynthetic()
             e?.post(tap: .cghidEventTap)
             current = next
-            if i < 34 { usleep(14_000) }
+            if i < Self.stepCount - 1 { usleep(Self.stepDelayMicros) }
         }
     }
 

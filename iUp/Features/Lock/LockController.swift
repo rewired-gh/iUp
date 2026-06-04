@@ -55,7 +55,7 @@ final class LockController {
         switch state {
         case .unlocked: lock()
         case .locked: requestUnlock()
-        default: break
+        case .locking, .unlocking: break  // transition (incl. auth) in progress
         }
     }
 

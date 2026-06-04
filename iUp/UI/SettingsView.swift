@@ -134,6 +134,7 @@ private struct DurationRow: View {
 
 /// Bridges Settings (UserDefaults) to SwiftUI bindings and applies side effects
 /// (login item) on change.
+@MainActor
 final class SettingsModel: ObservableObject {
     private let settings: Settings
     private let loginItem: LoginItem
@@ -169,6 +170,14 @@ final class SettingsModel: ObservableObject {
     var debugMode: Bool { get { settings.debugMode } set { write(\.debugMode, newValue) } }
     var launchAtLogin: Bool {
         get { settings.launchAtLogin }
-        set { write(\.launchAtLogin, newValue); try? loginItem.apply(enabled: newValue) }
+        set {
+            do {
+                try loginItem.apply(enabled: newValue)
+                write(\.launchAtLogin, newValue)
+            } catch {
+                // Registration failed — don't persist a misleading value; revert the toggle.
+                objectWillChange.send()
+            }
+        }
     }
 }

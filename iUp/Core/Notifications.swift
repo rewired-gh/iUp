@@ -8,4 +8,7 @@ extension Notification.Name {
     static let iUpForceUnlock = Notification.Name("iUp.forceUnlock")
     /// Posted whenever a setting changes, so live features can reconcile.
     static let iUpSettingsChanged = Notification.Name("iUp.settingsChanged")
+    /// Posted when an input event tap can no longer be enabled (e.g. Accessibility
+    /// was revoked at runtime), so the app can tear down and re-acquire on re-grant.
+    static let iUpInputServicesStalled = Notification.Name("iUp.inputServicesStalled")
 }
