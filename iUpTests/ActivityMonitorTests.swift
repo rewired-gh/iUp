@@ -12,6 +12,14 @@ struct ActivityMonitorTests {
         #expect(m.idle == 5)
     }
 
+    @Test func idleNeverNegativeIfClockGoesBackward() {
+        let clock = ManualClock()
+        let m = ActivityMonitor(clock: clock)
+        m.record(isSynthetic: false)
+        clock.advance(-50)   // defensive: clock should be monotonic, but never report negative idle
+        #expect(m.idle == 0)
+    }
+
     @Test func resetIdleClearsIdleWithoutFiringActive() {
         let clock = ManualClock()
         let m = ActivityMonitor(clock: clock)

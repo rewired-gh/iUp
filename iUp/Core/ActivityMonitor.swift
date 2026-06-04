@@ -7,7 +7,7 @@ import Foundation
 /// `record(isSynthetic:)` is the testable entry point the tap callback calls.
 final class ActivityMonitor {
     private let clock: Clock
-    private(set) var lastRealInputDate: Date
+    private(set) var lastRealInputUptime: TimeInterval
 
     /// Called once each time real user input arrives after a period (every real event).
     var onUserBecameActive: (() -> Void)?
@@ -16,15 +16,17 @@ final class ActivityMonitor {
 
     init(clock: Clock = SystemClock()) {
         self.clock = clock
-        self.lastRealInputDate = clock.now
+        self.lastRealInputUptime = clock.uptime
     }
 
-    var idle: TimeInterval { clock.now.timeIntervalSince(lastRealInputDate) }
+    /// Seconds since the last real input. Clamped to ≥ 0 (monotonic clock should
+    /// never go backwards, but stay defensive).
+    var idle: TimeInterval { max(0, clock.uptime - lastRealInputUptime) }
 
     /// Entry point invoked by the event-tap callback for every observed event.
     func record(isSynthetic: Bool) {
         guard !isSynthetic else { return }
-        lastRealInputDate = clock.now
+        lastRealInputUptime = clock.uptime
         onUserBecameActive?()
     }
 
@@ -33,5 +35,5 @@ final class ActivityMonitor {
     /// Reset the idle clock to now without firing callbacks. Used when input
     /// monitoring begins (e.g. Accessibility just granted) so a stale
     /// launch-time timestamp doesn't make the session look idle immediately.
-    func resetIdle() { lastRealInputDate = clock.now }
+    func resetIdle() { lastRealInputUptime = clock.uptime }
 }

@@ -1,17 +1,21 @@
 import Foundation
 
-/// Abstracts "now" so timing logic is testable without real time.
+/// Abstracts a monotonic time source so timing logic is testable without real time.
+///
+/// `uptime` is monotonic seconds (never goes backwards, unaffected by wall-clock /
+/// NTP changes), so idle measurement stays correct over very long runtimes. It is a
+/// `Double`, so it does not overflow (unlike integer tick counters).
 protocol Clock {
-    var now: Date { get }
+    var uptime: TimeInterval { get }
 }
 
 struct SystemClock: Clock {
-    var now: Date { Date() }
+    var uptime: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }
 
 /// Test/double clock whose time is set manually.
 final class ManualClock: Clock {
-    var now: Date
-    init(_ start: Date = Date(timeIntervalSince1970: 1_000_000)) { now = start }
-    func advance(_ seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
+    var uptime: TimeInterval
+    init(_ start: TimeInterval = 1_000) { uptime = start }
+    func advance(_ seconds: TimeInterval) { uptime += seconds }
 }
