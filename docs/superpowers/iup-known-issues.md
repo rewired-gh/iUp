@@ -1,6 +1,13 @@
 # iUp — Known Issues / Follow-ups
 
-Non-blocking items surfaced during final code review (2026-06-04). Implementation is functional and all unit tests pass; these are quality/robustness improvements for a later pass.
+Non-blocking items surfaced during code review. Implementation is functional and all unit tests pass; these are quality/robustness improvements for a later pass.
+
+## From reliability-pass review (2026-06-04, still open)
+- **Accessibility revocation mid-run isn't recovered** (`AppDelegate.startInputServicesIfPossible` guards `!inputMonitoringActive`): if the user revokes Accessibility while running, taps silently stop and there's no path back without relaunch. Fix: have `InputObservationTap`/`HotkeyManager` detect a failed tap re-enable and post a notification so `AppDelegate` resets `inputMonitoringActive` and re-polls.
+- **`InputObservationTap` uses an unretained `self` pointer for the tap callback** — `CFRunLoopStop` is async, so one callback could fire after dealloc. In practice the tap lives for the whole app, so it's latent. Fix: pass a retained pointer and release in `stop()`, or guard with a cancelled flag.
+- **`BrightnessService` doesn't `dlclose` its framework handles** (process-lifetime, benign).
+- **Brightness manual-override**: while locked-and-dimmed, if the user presses a brightness key (system-defined events aren't blocked), iUp can't detect it (no reliable brightness read on macOS 26), so unlock restores toward the saved level and may override the user's manual change. Best-effort by design.
+- **Magic numbers**: brightness key codes (2/3), Esc (53), jiggle step count/sleep, lock panel size — could be named constants.
 
 ## Important
 - **Login-item failure is swallowed** (`iUp/UI/SettingsView.swift`, `SettingsModel.launchAtLogin`): the setter uses `try?` and persists the preference even if `SMAppService.register()` throws, so the toggle can show "On" while the OS login item is not registered. Fix: only persist on success, surface the error in the UI, and reconcile `Settings.launchAtLogin` against `SMAppService.mainApp.status` at startup.
