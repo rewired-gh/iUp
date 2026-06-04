@@ -10,13 +10,16 @@ Reference source for the hard parts lives outside this repo at `../lockpaw/` (lo
 
 ## Commands
 
-Use the `Makefile` (not Xcode ⌘R) — it builds to a stable `./build/iUp.app` so the **Accessibility grant persists across rebuilds** (DerivedData paths change and lose the grant):
+Use the `Makefile` (not Xcode ⌘R) — it builds to a stable `./build/iUp.app`:
 
 - `make run` — build to `./build/iUp.app` and launch a fresh instance
 - `make build` — build only
 - `make test` — full unit suite
 - `make stop` — quit a running instance (safety net if the lock screen traps you)
 - `make accessibility` / `make reveal` — open the Accessibility pane / reveal the app to grant permission
+- `make signing-status` — shows whether builds use the dev identity or ad-hoc
+
+**Accessibility grant persistence is keyed to the signing identity, not the path.** TCC binds the grant to the code-signing Designated Requirement; ad-hoc builds get a fresh cdhash each rebuild → grant silently dies → idle features (pause/jiggle/dim) stop working with no error. The Makefile signs with your Apple Development team (derived from the installed cert, `-allowProvisioningUpdates`) when a valid cert exists, else falls back to ad-hoc. After the first signed build, grant Accessibility once and it persists. The menu shows a "⚠︎ Grant Accessibility…" item whenever the current build isn't trusted.
 
 Test commands directly:
 - All tests: `xcodebuild test -scheme iUp -destination 'platform=macOS' -only-testing:iUpTests`
@@ -28,6 +31,8 @@ The project uses **`PBXFileSystemSynchronizedRootGroup`**: any `.swift` added un
 There is no separate linter/formatter configured — build warnings are the lint signal. Commit messages follow Conventional Commits (`fix:`, `feat:`, `docs:`, `chore:`).
 
 Note: `xcodebuild` is authoritative for build/test status. In-editor SourceKit often shows stale "Cannot find type" errors across files in this project — ignore those if `xcodebuild` succeeds.
+
+Debugging a running build: `defaults read moe.rewired.iUp` inspects persisted settings; for the unified log use `/usr/bin/log` (the bare `log` is shadowed by a shell function) with `--info --debug` (those levels are hidden otherwise), e.g. `/usr/bin/log show --last 2m --info --debug --predicate 'subsystem == "moe.rewired.iUp"'`.
 
 ## Architecture
 
