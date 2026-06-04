@@ -38,6 +38,17 @@ final class AwakeController {
         isActive = false
         assertions.releaseAll()
     }
+
+    /// Re-apply assertions to match the current toggles, while active. Releases all
+    /// if keep-awake was turned off. No-op when inactive.
+    func reapply() {
+        guard isActive else { return }
+        assertions.releaseAll()
+        guard settings.awakeEnabled else { return }
+        if settings.awakeDisplayOn { assertions.hold(.displaySleep) }
+        if settings.awakeSystemSleep { assertions.hold(.systemSleep) }
+        if settings.awakeNetworkOn { assertions.hold(.network) }
+    }
 }
 
 /// Real IOKit-backed assertions. Shell: verified by build + manual run, not unit-tested.

@@ -77,4 +77,34 @@ struct DisplayControllerTests {
         c.didLock()
         #expect(b.externalOn == true)
     }
+
+    @Test func reapplyDisablingControlRestores() {
+        let (c, b, s) = make()
+        b.internalBrightness = 0.7
+        c.didLock()
+        s.displayControlEnabled = false
+        c.reapplyWhileLocked()
+        #expect(b.internalBrightness == 0.7)
+        #expect(b.externalOn == true)
+    }
+
+    @Test func reapplyTurningInternalDimOffRestores() {
+        let (c, b, s) = make()
+        b.internalBrightness = 0.7
+        c.didLock()
+        s.displayInternalDim = false
+        c.reapplyWhileLocked()
+        #expect(b.internalBrightness == 0.7)
+        #expect(b.externalOn == false)
+    }
+
+    @Test func reapplyEnablingInternalDimDims() {
+        let (c, b, s) = make(internalDim: false, externalOff: true)
+        b.internalBrightness = 0.5
+        c.didLock()                 // internalDim false → brightness untouched
+        #expect(b.internalBrightness == 0.5)
+        s.displayInternalDim = true
+        c.reapplyWhileLocked()
+        #expect(b.internalBrightness == 0)
+    }
 }

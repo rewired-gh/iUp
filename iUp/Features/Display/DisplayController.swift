@@ -44,4 +44,24 @@ final class DisplayController {
         if settings.displayExternalOff { backend.setExternalDisplays(on: true) }
         savedBrightness = nil
     }
+
+    /// Reconcile displays to current settings while locked (e.g. user toggled
+    /// display control or its sub-options from Settings mid-lock).
+    func reapplyWhileLocked() {
+        guard isAvailable else { return }
+        if !settings.displayControlEnabled {
+            if let b = savedBrightness { backend.setInternalBrightness(b) }
+            backend.setExternalDisplays(on: true)
+            savedBrightness = nil
+            return
+        }
+        if settings.displayInternalDim {
+            if savedBrightness == nil { savedBrightness = backend.getInternalBrightness() }
+            backend.setInternalBrightness(0)
+        } else if let b = savedBrightness {
+            backend.setInternalBrightness(b)
+            savedBrightness = nil
+        }
+        backend.setExternalDisplays(on: !settings.displayExternalOff)
+    }
 }

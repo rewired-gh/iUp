@@ -38,9 +38,9 @@ final class OverlayWindowManager {
     }
 
     /// Drop the overlay below system panels so the Touch ID / password dialog is
-    /// visible and interactive during authentication.
+    /// visible, but stay above the menu bar (statusBar level) so it isn't revealed.
     func lowerForAuth() {
-        for w in windows { w.level = .normal }
+        for w in windows { w.level = .statusBar }
     }
 
     /// Raise the overlay back to shield level (e.g. after a failed unlock).

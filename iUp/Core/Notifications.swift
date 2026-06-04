@@ -6,4 +6,6 @@ extension Notification.Name {
     static let iUpInputBlockerFailed = Notification.Name("iUp.inputBlockerFailed")
     /// Debug-only: unlock immediately without authentication (Esc escape hatch).
     static let iUpForceUnlock = Notification.Name("iUp.forceUnlock")
+    /// Posted whenever a setting changes, so live features can reconcile.
+    static let iUpSettingsChanged = Notification.Name("iUp.settingsChanged")
 }

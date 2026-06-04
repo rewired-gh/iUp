@@ -39,4 +39,35 @@ struct AwakeControllerTests {
         c.deactivate()
         #expect(fake.held.isEmpty)
     }
+
+    @Test func reapplyAddsNewlyEnabledAssertion() {
+        let fake = FakeAssertions()
+        let s = settings()
+        s.awakeNetworkOn = false
+        let c = AwakeController(settings: s, assertions: fake)
+        c.activate()
+        #expect(fake.held == [.displaySleep, .systemSleep])
+        s.awakeNetworkOn = true
+        c.reapply()
+        #expect(fake.held == [.displaySleep, .systemSleep, .network])
+    }
+
+    @Test func reapplyRemovesDisabledAssertion() {
+        let fake = FakeAssertions()
+        let s = settings()
+        let c = AwakeController(settings: s, assertions: fake)
+        c.activate()
+        s.awakeDisplayOn = false
+        c.reapply()
+        #expect(fake.held == [.systemSleep, .network])
+    }
+
+    @Test func reapplyWhenInactiveIsNoOp() {
+        let fake = FakeAssertions()
+        let s = settings()
+        let c = AwakeController(settings: s, assertions: fake)
+        s.awakeDisplayOn = true
+        c.reapply()
+        #expect(fake.held.isEmpty)
+    }
 }

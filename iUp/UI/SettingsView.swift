@@ -144,7 +144,9 @@ final class SettingsModel: ObservableObject {
     }
 
     private func write<T>(_ kp: ReferenceWritableKeyPath<Settings, T>, _ v: T) {
-        objectWillChange.send(); settings[keyPath: kp] = v
+        objectWillChange.send()
+        settings[keyPath: kp] = v
+        NotificationCenter.default.post(name: .iUpSettingsChanged, object: nil)
     }
 
     var awakeEnabled: Bool { get { settings.awakeEnabled } set { write(\.awakeEnabled, newValue) } }

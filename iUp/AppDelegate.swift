@@ -75,12 +75,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.startInputServicesIfPossible() } }
 
+        NotificationCenter.default.addObserver(
+            forName: .iUpSettingsChanged, object: nil, queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.reconcileSettings() } }
+
         menuBar = MenuBarController(session: session, lock: lock,
                                     onOpenSettings: { [weak self] in self?.settingsWindow.show() })
 
         startInputServicesIfPossible()
 
         if settings.autoStartSession { session.start() }
+    }
+
+    /// Apply live settings changes to running features, resetting state where needed.
+    private func reconcileSettings() {
+        if session.state == .active {
+            awake.reapply()
+            jiggle.reset()
+        }
+        if lock.state == .locked || lock.state == .unlocking {
+            display.reapplyWhileLocked()
+        }
     }
 
     /// Starts the input tap + global hotkeys once Accessibility is granted. If not yet
