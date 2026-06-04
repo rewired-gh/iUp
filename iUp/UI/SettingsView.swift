@@ -7,61 +7,122 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            awakeTab.tabItem { Text("Awake") }
-            jiggleTab.tabItem { Text("Activity") }
-            pauseTab.tabItem { Text("Pause") }
-            lockTab.tabItem { Text("Lock") }
-            appTab.tabItem { Text("General") }
+            awakeTab.tabItem { Label("Awake", systemImage: "cup.and.saucer") }
+            jiggleTab.tabItem { Label("Activity", systemImage: "cursorarrow.motionlines") }
+            pauseTab.tabItem { Label("Pause", systemImage: "pause.circle") }
+            lockTab.tabItem { Label("Lock", systemImage: "lock") }
+            appTab.tabItem { Label("General", systemImage: "gearshape") }
         }
-        .frame(width: 420, height: 320)
-        .padding()
+        .frame(width: 500, height: 420)
     }
 
     private var awakeTab: some View {
         Form {
-            Toggle("Enable keep-awake", isOn: $model.awakeEnabled)
-            Toggle("Keep display on", isOn: $model.awakeDisplayOn).disabled(!model.awakeEnabled)
-            Toggle("Prevent system sleep", isOn: $model.awakeSystemSleep).disabled(!model.awakeEnabled)
-            Toggle("Keep network alive", isOn: $model.awakeNetworkOn).disabled(!model.awakeEnabled)
+            Section {
+                Toggle("Keep the Mac awake", isOn: $model.awakeEnabled)
+            } footer: {
+                Text("Holds power assertions during an active session.")
+            }
+            Section("Prevent") {
+                Toggle("Display sleep", isOn: $model.awakeDisplayOn)
+                Toggle("System sleep", isOn: $model.awakeSystemSleep)
+                Toggle("Network sleep", isOn: $model.awakeNetworkOn)
+            }
+            .disabled(!model.awakeEnabled)
         }
-    }
-    private var jiggleTab: some View {
-        Form {
-            Toggle("Enable activity simulation", isOn: $model.jiggleEnabled)
-            secondsRow("Start after idle", $model.jiggleIdleStart)
-            secondsRow("Move every", $model.jiggleInterval)
-            secondsRow("Stop after extra idle", $model.jiggleStopAfter)
-        }
-    }
-    private var pauseTab: some View {
-        Form {
-            Toggle("Enable temporary pause", isOn: $model.tempPauseEnabled)
-            secondsRow("Pause after idle", $model.tempPauseIdle)
-        }
-    }
-    private var lockTab: some View {
-        Form {
-            Toggle("Enable lock", isOn: $model.lockEnabled)
-            secondsRow("Burn-in reposition interval", $model.burnInInterval)
-            Toggle("Control displays while locked", isOn: $model.displayControlEnabled)
-            Toggle("Dim built-in display", isOn: $model.displayInternalDim).disabled(!model.displayControlEnabled)
-            Toggle("Turn off external displays", isOn: $model.displayExternalOff).disabled(!model.displayControlEnabled)
-            secondsRow("Re-dim after idle", $model.displayDimIdle).disabled(!model.displayControlEnabled)
-        }
-    }
-    private var appTab: some View {
-        Form {
-            Toggle("Launch at login", isOn: $model.launchAtLogin)
-            Toggle("Auto-start session on launch", isOn: $model.autoStartSession)
-        }
+        .formStyle(.grouped)
     }
 
-    private func secondsRow(_ label: String, _ value: Binding<TimeInterval>) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            TextField("", value: value, format: .number).frame(width: 70).multilineTextAlignment(.trailing)
-            Text("s")
+    private var jiggleTab: some View {
+        Form {
+            Section {
+                Toggle("Simulate activity when idle", isOn: $model.jiggleEnabled)
+            } footer: {
+                Text("Moves the cursor in short bursts so the Mac registers activity. Real input is never counted as simulated.")
+            }
+            Section("Timing") {
+                DurationRow("Start after idle", seconds: $model.jiggleIdleStart, range: 5...3600, step: 5)
+                DurationRow("Move every", seconds: $model.jiggleInterval, range: 5...600, step: 5)
+                DurationRow("Stop after extra idle", seconds: $model.jiggleStopAfter, range: 0...86_400, step: 30)
+            }
+            .disabled(!model.jiggleEnabled)
+        }
+        .formStyle(.grouped)
+    }
+
+    private var pauseTab: some View {
+        Form {
+            Section {
+                Toggle("Pause the session when idle", isOn: $model.tempPauseEnabled)
+            } footer: {
+                Text("Releases keep-awake so the Mac may sleep. Resumes automatically on input or wake, or from the menu.")
+            }
+            Section("Timing") {
+                DurationRow("Pause after idle", seconds: $model.tempPauseIdle, range: 5...3600, step: 5)
+            }
+            .disabled(!model.tempPauseEnabled)
+        }
+        .formStyle(.grouped)
+    }
+
+    private var lockTab: some View {
+        Form {
+            Section {
+                Toggle("Enable lock screen", isOn: $model.lockEnabled)
+                DurationRow("Burn-in reposition interval", seconds: $model.burnInInterval, range: 5...600, step: 5)
+                    .disabled(!model.lockEnabled)
+            } footer: {
+                Text("Lock with the menu or ⌃⌥⌘L. Unlock with Touch ID, password, or the same shortcut.")
+            }
+            Section("Displays while locked") {
+                Toggle("Control displays", isOn: $model.displayControlEnabled)
+                Toggle("Dim built-in display", isOn: $model.displayInternalDim)
+                    .disabled(!model.displayControlEnabled)
+                Toggle("Turn off external displays", isOn: $model.displayExternalOff)
+                    .disabled(!model.displayControlEnabled)
+                DurationRow("Re-dim after idle", seconds: $model.displayDimIdle, range: 5...3600, step: 5)
+                    .disabled(!model.displayControlEnabled)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var appTab: some View {
+        Form {
+            Section {
+                Toggle("Launch at login", isOn: $model.launchAtLogin)
+                Toggle("Auto-start session on launch", isOn: $model.autoStartSession)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+/// A grouped-form row: label on the left, a numeric seconds field + stepper on the right.
+private struct DurationRow: View {
+    let title: String
+    @Binding var seconds: TimeInterval
+    let range: ClosedRange<Double>
+    let step: Double
+
+    init(_ title: String, seconds: Binding<TimeInterval>, range: ClosedRange<Double>, step: Double) {
+        self.title = title
+        self._seconds = seconds
+        self.range = range
+        self.step = step
+    }
+
+    var body: some View {
+        LabeledContent(title) {
+            HStack(spacing: 6) {
+                TextField("", value: $seconds, format: .number.precision(.fractionLength(0)))
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 64)
+                Text("sec").foregroundStyle(.secondary)
+                Stepper("", value: $seconds, in: range, step: step)
+                    .labelsHidden()
+            }
         }
     }
 }
