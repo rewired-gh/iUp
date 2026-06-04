@@ -27,6 +27,7 @@
 		8978E02F2FD077340050B50F /* iUp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iUp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8978E03E2FD077350050B50F /* iUpTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iUpTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8978E0482FD077350050B50F /* iUpUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iUpUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8978E05B2FD078240050B50F /* prd.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = prd.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +76,7 @@
 		8978E0262FD077330050B50F = {
 			isa = PBXGroup;
 			children = (
+				8978E05B2FD078240050B50F /* prd.md */,
 				8978E0312FD077340050B50F /* iUp */,
 				8978E0412FD077350050B50F /* iUpTests */,
 				8978E04B2FD077350050B50F /* iUpUITests */,
@@ -399,6 +401,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -429,6 +432,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
