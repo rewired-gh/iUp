@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             awake.reapply()
             jiggle.reset()
         }
-        if lock.state == .locked || lock.state == .unlocking {
+        if lock.state == .locked {
             display.reapplyWhileLocked()
         }
     }
