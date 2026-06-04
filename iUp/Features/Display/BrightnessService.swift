@@ -1,42 +1,114 @@
+import AppKit
 import CoreGraphics
 import os.log
 
-/// Real display backend using the private DisplayServices framework for internal
-/// brightness, with external-display mirroring/disable as best-effort.
-/// PRD allows external control to no-op if infeasible.
+/// Built-in display brightness control.
+///
+/// On current macOS the private absolute-brightness APIs (DisplayServices /
+/// CoreDisplay) are unreliable for third-party apps, so this combines two paths:
+///  1. Best-effort absolute set via DisplayServices + CoreDisplay (works in some
+///     signed contexts; harmless no-op otherwise).
+///  2. Brightness hardware-key simulation, which reliably drives the real backlight.
+///
+/// Restore only bumps the backlight up if we previously dimmed it (so it never
+/// raises brightness that was already at its minimum). External-display control is
+/// best-effort (PRD allows it to no-op).
 final class BrightnessService: DisplayBackend {
     private static let log = Logger(subsystem: "moe.rewired.iUp", category: "Brightness")
-    private typealias GetFn = @convention(c) (CGDirectDisplayID, UnsafeMutablePointer<Float>) -> Int32
-    private typealias SetFn = @convention(c) (CGDirectDisplayID, Float) -> Int32
-    private let getFn: GetFn?
-    private let setFn: SetFn?
+
+    private typealias DSGet = @convention(c) (CGDirectDisplayID, UnsafeMutablePointer<Float>) -> Int32
+    private typealias DSSet = @convention(c) (CGDirectDisplayID, Float) -> Int32
+    private typealias CDGet = @convention(c) (CGDirectDisplayID) -> Double
+    private typealias CDSet = @convention(c) (CGDirectDisplayID, Double) -> Void
+
+    private let dsGet: DSGet?
+    private let dsSet: DSSet?
+    private let cdGet: CDGet?
+    private let cdSet: CDSet?
+
+    /// macOS exposes 16 coarse brightness steps via the hardware keys.
+    private static let keySteps = 16
+    private static let minFraction: Float = 1.0 / Float(keySteps)
+    /// True while we have driven the backlight down and not yet restored it.
+    private var didKeyDim = false
 
     init() {
-        let handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW)
-        getFn = dlsym(handle, "DisplayServicesGetBrightness").map { unsafeBitCast($0, to: GetFn.self) }
-        setFn = dlsym(handle, "DisplayServicesSetBrightness").map { unsafeBitCast($0, to: SetFn.self) }
+        let ds = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW)
+        let cd = dlopen("/System/Library/Frameworks/CoreDisplay.framework/CoreDisplay", RTLD_NOW)
+        dsGet = dlsym(ds, "DisplayServicesGetBrightness").map { unsafeBitCast($0, to: DSGet.self) }
+        dsSet = dlsym(ds, "DisplayServicesSetBrightness").map { unsafeBitCast($0, to: DSSet.self) }
+        cdGet = dlsym(cd, "CoreDisplay_Display_GetUserBrightness").map { unsafeBitCast($0, to: CDGet.self) }
+        cdSet = dlsym(cd, "CoreDisplay_Display_SetUserBrightness").map { unsafeBitCast($0, to: CDSet.self) }
     }
 
+    /// The built-in display, or nil if this Mac has none (feature unavailable).
     private var internalDisplayID: CGDirectDisplayID? {
+        let main = CGMainDisplayID()
+        if CGDisplayIsBuiltin(main) != 0 { return main }
         var count: UInt32 = 0
-        CGGetActiveDisplayList(0, nil, &count)
+        CGGetOnlineDisplayList(0, nil, &count)
+        guard count > 0 else { return nil }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        CGGetActiveDisplayList(count, &ids, &count)
+        CGGetOnlineDisplayList(count, &ids, &count)
         return ids.first { CGDisplayIsBuiltin($0) != 0 }
     }
 
+    /// Best-effort read. Returns a value whenever a built-in display exists (so the
+    /// feature is considered available), falling back to 1.0 if the read is blocked.
     func getInternalBrightness() -> Float? {
-        guard let id = internalDisplayID, let getFn else { return nil }
-        var value: Float = 0
-        return getFn(id, &value) == 0 ? value : nil
+        guard let id = internalDisplayID else { return nil }
+        if let dsGet {
+            var v: Float = 0
+            if dsGet(id, &v) == 0 { return v }
+        }
+        if let cdGet { return Float(cdGet(id)) }
+        return 1.0
     }
 
     func setInternalBrightness(_ v: Float) {
-        guard let id = internalDisplayID, let setFn else { return }
-        _ = setFn(id, max(0, min(1, v)))
+        guard let id = internalDisplayID else { return }
+        let clamped = max(0, min(1, v))
+
+        // 1. Best-effort absolute private API.
+        _ = dsSet?(id, clamped)
+        cdSet?(id, Double(clamped))
+
+        // 2. Reliable hardware-key simulation.
+        if clamped <= Self.minFraction {
+            // Dim to minimum: press brightness-down enough to bottom out.
+            pressBrightnessKey(up: false, times: Self.keySteps)
+            didKeyDim = true
+        } else if didKeyDim {
+            // Restore: only bump up if we actually dimmed. Step up to ~target level.
+            let steps = max(1, Int((clamped * Float(Self.keySteps)).rounded()))
+            pressBrightnessKey(up: true, times: steps)
+            didKeyDim = false
+        }
     }
 
     func setExternalDisplays(on: Bool) {
         Self.log.info("setExternalDisplays(on: \(on)) — best-effort no-op")
+    }
+
+    // MARK: - Brightness key simulation
+
+    /// Post N brightness up/down hardware key presses via NSSystemDefined events.
+    private func pressBrightnessKey(up: Bool, times: Int) {
+        let key = up ? 2 : 3  // NX_KEYTYPE_BRIGHTNESS_UP : NX_KEYTYPE_BRIGHTNESS_DOWN
+        for _ in 0..<times {
+            postAuxKey(key, keyDown: true)
+            postAuxKey(key, keyDown: false)
+        }
+    }
+
+    private func postAuxKey(_ key: Int, keyDown: Bool) {
+        let data1 = (key << 16) | ((keyDown ? 0xA : 0xB) << 8)
+        guard let event = NSEvent.otherEvent(
+            with: .systemDefined, location: .zero,
+            modifierFlags: NSEvent.ModifierFlags(rawValue: UInt(keyDown ? 0xA00 : 0xB00)),
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: 0,
+            context: nil, subtype: 8, data1: data1, data2: -1
+        ) else { return }
+        event.cgEvent?.post(tap: .cghidEventTap)
     }
 }
