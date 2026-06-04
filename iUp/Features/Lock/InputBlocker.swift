@@ -43,10 +43,14 @@ final class InputBlocker {
                     if m & shiftKey != 0 { match = match && flags.contains(.maskShift) }
                     if m & optionKey != 0 { match = match && flags.contains(.maskAlternate) }
                     if m & controlKey != 0 { match = match && flags.contains(.maskControl) }
+                    let noModifiers = !flags.contains(.maskCommand) && !flags.contains(.maskAlternate)
+                        && !flags.contains(.maskControl) && !flags.contains(.maskShift)
                     if match {
                         NotificationCenter.default.post(name: .iUpToggleLock, object: nil)
-                    } else if keyCode == 53 && me.debugEscapeEnabled {
-                        // Debug escape hatch: Escape force-unlocks without authentication.
+                    } else if keyCode == 53 && noModifiers && me.debugEscapeEnabled {
+                        // Debug escape hatch: plain Escape force-unlocks without auth.
+                        // (⌘⌥⎋ Force Quit is keyCode 53 *with* modifiers — it falls through
+                        // and is swallowed like every other key, matching Lockpaw.)
                         NotificationCenter.default.post(name: .iUpForceUnlock, object: nil)
                     }
                 }
