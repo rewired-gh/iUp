@@ -1,22 +1,66 @@
 import SwiftUI
+import AppKit
 import Combine
 
-/// All per-feature toggles and thresholds. Backed by a shared Settings instance.
-struct SettingsView: View {
-    @ObservedObject var model: SettingsModel
+/// One pane of the settings window. The window chrome is a native `NSToolbar`
+/// in `.preference` style (see `SettingsWindowController`); this enum is the
+/// single source of truth for the panes' identity, order, title, and icon.
+enum SettingsPane: String, CaseIterable, Identifiable {
+    case awake, activity, pause, lock, general
 
-    var body: some View {
-        TabView {
-            awakeTab.tabItem { Label("Awake", systemImage: "cup.and.saucer") }
-            jiggleTab.tabItem { Label("Activity", systemImage: "cursorarrow.motionlines") }
-            pauseTab.tabItem { Label("Pause", systemImage: "pause.circle") }
-            lockTab.tabItem { Label("Lock", systemImage: "lock") }
-            appTab.tabItem { Label("General", systemImage: "gearshape") }
+    var id: String { rawValue }
+    var itemID: NSToolbarItem.Identifier { .init(rawValue) }
+
+    var title: String {
+        switch self {
+        case .awake:    "Awake"
+        case .activity: "Activity"
+        case .pause:    "Pause"
+        case .lock:     "Lock"
+        case .general:  "General"
         }
-        .frame(width: 500, height: 420)
     }
 
-    private var awakeTab: some View {
+    var symbol: String {
+        switch self {
+        case .awake:    "cup.and.saucer"
+        case .activity: "cursorarrow.motionlines"
+        case .pause:    "pause.circle"
+        case .lock:     "lock"
+        case .general:  "gearshape"
+        }
+    }
+}
+
+/// Renders a single settings pane. The hosting window swaps which pane is shown
+/// as the toolbar selection changes, so there is no SwiftUI `TabView` — its
+/// macOS tab-strip chrome renders incorrectly outside the `Settings` scene
+/// (mismatched background, misaligned focus rings).
+struct SettingsView: View {
+    @ObservedObject var model: SettingsModel
+    let pane: SettingsPane
+
+    /// Fixed so the window width stays stable across panes; height is intrinsic.
+    private let paneWidth: CGFloat = 460
+
+    var body: some View {
+        content
+            .formStyle(.grouped)
+            .frame(width: paneWidth)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch pane {
+        case .awake:    awakeForm
+        case .activity: activityForm
+        case .pause:    pauseForm
+        case .lock:     lockForm
+        case .general:  generalForm
+        }
+    }
+
+    private var awakeForm: some View {
         Form {
             Section {
                 Toggle("Keep the Mac awake", isOn: $model.awakeEnabled)
@@ -30,10 +74,9 @@ struct SettingsView: View {
             }
             .disabled(!model.awakeEnabled)
         }
-        .formStyle(.grouped)
     }
 
-    private var jiggleTab: some View {
+    private var activityForm: some View {
         Form {
             Section {
                 Toggle("Simulate activity when idle", isOn: $model.jiggleEnabled)
@@ -46,10 +89,9 @@ struct SettingsView: View {
             }
             .disabled(!model.jiggleEnabled)
         }
-        .formStyle(.grouped)
     }
 
-    private var pauseTab: some View {
+    private var pauseForm: some View {
         Form {
             Section {
                 Toggle("Pause the session when idle", isOn: $model.tempPauseEnabled)
@@ -61,10 +103,9 @@ struct SettingsView: View {
             }
             .disabled(!model.tempPauseEnabled)
         }
-        .formStyle(.grouped)
     }
 
-    private var lockTab: some View {
+    private var lockForm: some View {
         Form {
             Section {
                 Toggle("Enable lock screen", isOn: $model.lockEnabled)
@@ -79,10 +120,9 @@ struct SettingsView: View {
                 Text("Lowers the built-in display to its minimum while the lock screen is shown. Brightness is not changed back on unlock — raise it yourself.")
             }
         }
-        .formStyle(.grouped)
     }
 
-    private var appTab: some View {
+    private var generalForm: some View {
         Form {
             Section {
                 Toggle("Launch at login", isOn: $model.launchAtLogin)
@@ -94,7 +134,6 @@ struct SettingsView: View {
                 Text("Allows pressing Esc on the lock screen to unlock immediately without authentication. For testing only.")
             }
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -113,16 +152,21 @@ private struct DurationRow: View {
     }
 
     var body: some View {
-        LabeledContent(title) {
-            HStack(spacing: 6) {
-                TextField("", value: $seconds, format: .number.precision(.fractionLength(0)))
-                    .textFieldStyle(.roundedBorder)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 64)
-                Text("sec").foregroundStyle(.secondary)
-                Stepper("", value: $seconds, in: range, step: step)
-                    .labelsHidden()
-            }
+        // A manual centered HStack rather than LabeledContent: LabeledContent
+        // baseline-aligns its label to the control, leaving the text visibly
+        // high next to the taller field+stepper.
+        HStack(alignment: .center, spacing: 6) {
+            Text(title)
+            Spacer(minLength: 12)
+            // Wide enough that 4-digit values never wrap; wrapping was what
+            // pushed the row taller on certain numbers.
+            TextField("", value: $seconds, format: .number.precision(.fractionLength(0)))
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 88)
+            Text("sec").foregroundStyle(.secondary)
+            Stepper("", value: $seconds, in: range, step: step)
+                .labelsHidden()
         }
     }
 }
