@@ -13,15 +13,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var lock = LockController(settings: settings)
     private lazy var display = DisplayController(settings: settings, backend: BrightnessService())
     private lazy var hotkey = HotkeyManager()
+    private lazy var settingsModel = SettingsModel(settings: settings)
+    private lazy var settingsWindow = SettingsWindowController(model: settingsModel)
     private var menuBar: MenuBarController?
 
     private var inputTap: InputObservationTap?
     private var tickTimer: DispatchSourceTimer?
 
+    /// True once the Accessibility-gated input tap + hotkeys are running. Until then,
+    /// idle-based logic is suppressed so a frozen clock can't false-trigger TempPause.
+    private var inputMonitoringActive = false
+    private var accessibilityPoll: Timer?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-
-        AccessibilityChecker.promptIfNeeded()
 
         monitor.onUserBecameActive = { [weak self] in
             guard let self else { return }
@@ -29,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if self.lock.state == .locked { self.display.userActiveWhileLocked() }
         }
         monitor.onTick = { [weak self] idle in
-            guard let self else { return }
+            guard let self, self.inputMonitoringActive else { return }
             self.session.tick(idle: idle)
             if self.lock.state == .locked { self.display.lockedTick(idle: idle) }
         }
@@ -40,7 +45,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         inputTap = InputObservationTap { [weak self] isSynthetic in
             DispatchQueue.main.async { self?.monitor.record(isSynthetic: isSynthetic) }
         }
-        inputTap?.start()
 
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + 0.25, repeating: 0.25, leeway: .milliseconds(100))
@@ -64,10 +68,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        hotkey.register()
-        menuBar = MenuBarController(session: session, lock: lock)
+        // Re-check Accessibility whenever the app is reactivated (e.g. user returns
+        // from System Settings after granting permission).
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.startInputServicesIfPossible() } }
+
+        menuBar = MenuBarController(session: session, lock: lock,
+                                    onOpenSettings: { [weak self] in self?.settingsWindow.show() })
+
+        startInputServicesIfPossible()
 
         if settings.autoStartSession { session.start() }
+    }
+
+    /// Starts the input tap + global hotkeys once Accessibility is granted. If not yet
+    /// granted, prompts and polls until it is, so the user need not relaunch the app.
+    private func startInputServicesIfPossible() {
+        guard !inputMonitoringActive else { return }
+        guard AccessibilityChecker.isEnabled else {
+            AccessibilityChecker.promptIfNeeded()
+            startAccessibilityPolling()
+            return
+        }
+        monitor.resetIdle()          // avoid a stale launch-time idle triggering an instant pause
+        inputTap?.start()
+        hotkey.register()
+        inputMonitoringActive = true
+        accessibilityPoll?.invalidate()
+        accessibilityPoll = nil
+    }
+
+    private func startAccessibilityPolling() {
+        guard accessibilityPoll == nil else { return }
+        accessibilityPoll = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.startInputServicesIfPossible() }
+        }
     }
 }
 

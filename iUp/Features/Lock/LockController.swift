@@ -50,7 +50,9 @@ final class LockController {
         guard settings.lockEnabled else { return }
         guard state.canTransition(to: .locking) else { return }
         guard AccessibilityChecker.isEnabled else {
-            AccessibilityChecker.promptIfNeeded(); return
+            AccessibilityChecker.promptIfNeeded()
+            presentAccessibilityAlert()
+            return
         }
         state = .locking
 
@@ -95,5 +97,18 @@ final class LockController {
         overlay.dismissOverlay()
         inputBlocker.stopBlocking()
         state = .unlocked
+    }
+
+    private func presentAccessibilityAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility permission required"
+        alert.informativeText = "iUp needs Accessibility access to lock the screen and block input. "
+            + "Enable iUp in System Settings ▸ Privacy & Security ▸ Accessibility, then try again."
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            AccessibilityChecker.openSystemSettings()
+        }
     }
 }

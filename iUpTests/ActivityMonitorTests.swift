@@ -12,6 +12,18 @@ struct ActivityMonitorTests {
         #expect(m.idle == 5)
     }
 
+    @Test func resetIdleClearsIdleWithoutFiringActive() {
+        let clock = ManualClock()
+        let m = ActivityMonitor(clock: clock)
+        var activeCount = 0
+        m.onUserBecameActive = { activeCount += 1 }
+        clock.advance(120)
+        #expect(m.idle == 120)
+        m.resetIdle()
+        #expect(m.idle == 0)
+        #expect(activeCount == 0)
+    }
+
     @Test func syntheticInputDoesNotResetIdle() {
         let clock = ManualClock()
         let m = ActivityMonitor(clock: clock)

@@ -6,14 +6,16 @@ final class MenuBarController {
     private let statusItem: NSStatusItem
     private let session: SessionController
     private let lock: LockController
+    private let onOpenSettings: () -> Void
 
     private let sessionItem = NSMenuItem()
     private let resumeItem = NSMenuItem()
     private let stateLabelItem = NSMenuItem()
 
-    init(session: SessionController, lock: LockController) {
+    init(session: SessionController, lock: LockController, onOpenSettings: @escaping () -> Void) {
         self.session = session
         self.lock = lock
+        self.onOpenSettings = onOpenSettings
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: "iUp")
         buildMenu()
@@ -23,6 +25,7 @@ final class MenuBarController {
 
     private func buildMenu() {
         let menu = NSMenu()
+        menu.autoenablesItems = false
         stateLabelItem.isEnabled = false
         menu.addItem(stateLabelItem)
         menu.addItem(.separator())
@@ -74,13 +77,6 @@ final class MenuBarController {
     }
     @objc private func resumeSession() { session.resume() }
     @objc private func doLock() { lock.lock() }
-    @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
-    }
+    @objc private func openSettings() { onOpenSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
 }

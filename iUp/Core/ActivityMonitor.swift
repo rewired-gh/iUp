@@ -29,4 +29,9 @@ final class ActivityMonitor {
     }
 
     func tick() { onTick?(idle) }
+
+    /// Reset the idle clock to now without firing callbacks. Used when input
+    /// monitoring begins (e.g. Accessibility just granted) so a stale
+    /// launch-time timestamp doesn't make the session look idle immediately.
+    func resetIdle() { lastRealInputDate = clock.now }
 }
