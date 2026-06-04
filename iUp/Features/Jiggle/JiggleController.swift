@@ -46,15 +46,21 @@ final class JiggleController {
     }
 }
 
-/// Real CGEvent-posting burst. Shell: verified by build + manual run.
+/// Real CGEvent-posting burst, in global display (CG, top-left origin) coordinates
+/// throughout — matching how mouse events are posted. Mirrors Jiggler's approach.
+/// Shell: verified by build + manual run.
 final class CGMovePoster: MovePosting {
     func postBurst() {
         guard let source = CGEventSource(stateID: .hidSystemState) else { return }
         let old = source.localEventsSuppressionInterval
         source.localEventsSuppressionInterval = 0
+        defer { source.localEventsSuppressionInterval = old }
+
+        let screens = Self.activeDisplayBounds()
+        guard !screens.isEmpty else { return }
         var rng = SystemRandomNumberGenerator()
-        let screens = NSScreen.screens.map { $0.frame }
-        var current = currentCursorCG()
+        var current = CGEvent(source: nil)?.location ?? CGPoint(x: screens[0].midX, y: screens[0].midY)
+
         for i in 0..<35 {
             guard let next = JiggleMath.nextPoint(from: current, avoiding: current,
                                                   screens: screens, tolerance: 30,
@@ -66,13 +72,16 @@ final class CGMovePoster: MovePosting {
             current = next
             if i < 34 { usleep(14_000) }
         }
-        source.localEventsSuppressionInterval = old
     }
 
-    /// Current cursor in CG (top-left origin) coordinates.
-    private func currentCursorCG() -> CGPoint {
-        let loc = NSEvent.mouseLocation
-        let h = NSScreen.screens.first?.frame.height ?? 0
-        return CGPoint(x: loc.x, y: h - loc.y)
+    /// Active displays' bounds in global CG coordinates (top-left origin) — the same
+    /// space CGEvent mouse positions use.
+    private static func activeDisplayBounds() -> [CGRect] {
+        var count: UInt32 = 0
+        CGGetActiveDisplayList(0, nil, &count)
+        guard count > 0 else { return [] }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        CGGetActiveDisplayList(count, &ids, &count)
+        return ids.map { CGDisplayBounds($0) }
     }
 }
