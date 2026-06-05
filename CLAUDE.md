@@ -10,10 +10,12 @@ Reference source for the hard parts lives outside this repo at `../lockpaw/` (lo
 
 ## Commands
 
-Use the `Makefile` (not Xcode ⌘R) — it builds to a stable `./build/iUp.app`:
+Use the `Makefile` (not Xcode ⌘R) — builds go to per-config dirs: `./build/Debug/iUp.app` / `./build/Release/iUp.app`.
 
-- `make run` — build to `./build/iUp.app` and launch a fresh instance
-- `make build` — build only
+- `make run` — build (Debug) and launch a fresh instance
+- `make build` — build only (Debug)
+- `make release` — optimized Release artifact: -O whole-module, thin LTO, cross-module optimization, dead-code + symbol stripping, no NS assertions
+- `make run-release` — build Release and launch
 - `make test` — full unit suite
 - `make stop` — quit a running instance (safety net if the lock screen traps you)
 - `make accessibility` / `make reveal` — open the Accessibility pane / reveal the app to grant permission
@@ -59,6 +61,9 @@ Debugging a running build: `defaults read moe.rewired.iUp` inspects persisted se
 - **Name collision.** The app defines a `Settings` class; the SwiftUI `Settings` scene must be written fully-qualified as `SwiftUI.Settings`.
 - **Lock screen colors** match Lockpaw: dim white on black (`.white.opacity(...)`), no bright/prominent controls.
 - **Settings window chrome.** The SwiftUI `Settings` scene won't open from the accessory app's AppKit status menu (`showSettingsWindow:` is a no-op; don't toggle activation policy to `.regular` to force it — that adds a Dock icon). `SettingsWindowController` hosts the panes in its own `NSWindow`. Do NOT use a SwiftUI `TabView` for the tabs there: outside the `Settings` scene it renders the tab strip with wrong insets (mismatched background band, misaligned focus rings). Tabs are a native `NSToolbar` in `.preference` style; each pane is an isolated SwiftUI view keyed by the `SettingsPane` enum, swapped on toolbar selection. In grouped-Form rows, give numeric `TextField`s enough width that values don't wrap (wrapping grows row height) and center-align label vs control manually — `LabeledContent` baseline-aligns the label too high.
+
+- **Debug-only UI.** `SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG"` is set only in the Debug Xcode config. Use `#if DEBUG` to gate any UI or behavior that must not ship in Release (e.g. the Esc force-unlock toggle in `SettingsView`).
+- **Release packaging.** `ditto -c -k --keepParent build/Release/iUp.app /tmp/iUp-vX.Y.Z.zip` preserves the code-signature for distribution. `gh auth login` is interactive (device-flow only — cannot be automated; user must open github.com/login/device with the one-time code).
 
 Side-effecting units (event taps, overlay, brightness, auth, login item) are thin shells verified by build + manual run; pure logic (`ActivityMonitor`, `SessionController`, `JiggleMath`, `LockState`, `BurnIn`, `Awake`/`Display`/`Jiggle` controllers, `Settings`, `LoginItem`) is unit-tested with injected fakes/clock.
 
