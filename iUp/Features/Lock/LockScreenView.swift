@@ -4,7 +4,6 @@ import Combine
 /// Full-black lock content with dim-grey thin text + unlock button, both repositioned
 /// every `burnInInterval` seconds for burn-in protection (BurnIn generator).
 struct LockScreenView: View {
-    let message: String
     let burnInInterval: TimeInterval
     var debugEscape: Bool = false
     let onUnlock: () -> Void
@@ -34,10 +33,6 @@ struct LockScreenView: View {
     /// control is always visible alongside the text.
     private var panel: some View {
         VStack(spacing: 20) {
-            Text(message)
-                .font(.system(size: 30, weight: .thin))
-                .foregroundStyle(.white.opacity(0.55))
-
             Button(action: onUnlock) {
                 Text("Unlock")
                     .font(.system(size: 15, weight: .regular))

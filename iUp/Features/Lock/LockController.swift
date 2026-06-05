@@ -66,11 +66,10 @@ final class LockController {
         }
         state = .locking
 
-        let msg = "iUp"
         let interval = settings.burnInInterval
         let debug = settings.debugMode
         guard overlay.showOverlay(contentFactory: { [weak self] _ in
-            AnyView(LockScreenView(message: msg, burnInInterval: interval, debugEscape: debug) {
+            AnyView(LockScreenView(burnInInterval: interval, debugEscape: debug) {
                 self?.requestUnlock()
             })
         }) else {
