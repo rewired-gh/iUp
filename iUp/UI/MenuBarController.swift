@@ -73,14 +73,17 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             stateLabelItem.title = "Session: Off"
             sessionItem.title = "Start Session"
             resumeItem.isHidden = true
+            statusItem.button?.contentTintColor = .tertiaryLabelColor
         case .active:
             stateLabelItem.title = "Session: Active"
             sessionItem.title = "Stop Session"
             resumeItem.isHidden = true
+            statusItem.button?.contentTintColor = nil
         case .pausedByIdle:
             stateLabelItem.title = "Session: Paused (idle)"
             sessionItem.title = "Stop Session"
             resumeItem.isHidden = false
+            statusItem.button?.contentTintColor = .tertiaryLabelColor
         }
     }
 
