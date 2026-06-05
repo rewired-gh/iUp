@@ -1,8 +1,28 @@
 SCHEME    := iUp
 DEST      := platform=macOS
+# Default config is Debug; `make release`/`make run-release` override to Release.
+# Build dir is per-config so debug and release artifacts never clobber each other.
 CONFIG    := Debug
-BUILD_DIR := $(CURDIR)/build
+BUILD_DIR := $(CURDIR)/build/$(CONFIG)
 APP       := $(BUILD_DIR)/$(SCHEME).app
+
+# Release optimization flags. Xcode's Release config already gives -O + whole-module;
+# these push further: cross-module link-time optimization, dead-code stripping, symbol
+# stripping, and disabled runtime assertions for a lean, fast shipping binary.
+RELEASE_OPT := \
+	SWIFT_OPTIMIZATION_LEVEL=-O \
+	SWIFT_COMPILATION_MODE=wholemodule \
+	GCC_OPTIMIZATION_LEVEL=s \
+	LLVM_LTO=YES_THIN \
+	DEAD_CODE_STRIPPING=YES \
+	DEPLOYMENT_POSTPROCESSING=YES \
+	STRIP_INSTALLED_PRODUCT=YES \
+	COPY_PHASE_STRIP=YES \
+	ENABLE_NS_ASSERTIONS=NO \
+	SWIFT_DISABLE_SAFETY_CHECKS=NO \
+	VALIDATE_PRODUCT=YES \
+	OTHER_SWIFT_FLAGS=-cross-module-optimization \
+	OTHER_LDFLAGS='-Wl,-dead_strip -Wl,-x'
 
 # Developer team for signing, derived from the installed Apple Development cert (its
 # subject OU) so no team ID is hardcoded here. With a valid cert, builds are signed
@@ -20,16 +40,34 @@ else
 SIGN      := -allowProvisioningUpdates DEVELOPMENT_TEAM=$(TEAM) CODE_SIGN_STYLE=Automatic
 endif
 
-.PHONY: build run stop test reveal accessibility path clean signing-status
+# Apply Release opt flags only when building the Release config. Computed (not passed
+# via recursive make) so the embedded quotes/spaces survive into one xcodebuild arg.
+ifeq ($(CONFIG),Release)
+EXTRA     := $(RELEASE_OPT)
+else
+EXTRA     :=
+endif
 
-## Build the app to a STABLE path ($(BUILD_DIR)) so Accessibility grants persist.
+.PHONY: build release run run-release stop test reveal accessibility path clean signing-status
+
+## Build the (Debug) app to a STABLE path ($(BUILD_DIR)) so Accessibility grants persist.
+## EXTRA carries extra xcodebuild settings (empty for Debug; Release opt flags via `release`).
 build:
 	xcodebuild build -scheme $(SCHEME) -destination '$(DEST)' -configuration $(CONFIG) \
-		$(SIGN) CONFIGURATION_BUILD_DIR='$(BUILD_DIR)'
+		$(SIGN) $(EXTRA) CONFIGURATION_BUILD_DIR='$(BUILD_DIR)'
 
-## Rebuild and launch a fresh instance.
+## Build a highly-optimized Release artifact (LTO, stripped, no assertions).
+release:
+	$(MAKE) build CONFIG=Release
+	@echo "Release built: $(CURDIR)/build/Release/$(SCHEME).app"
+
+## Rebuild and launch a fresh Debug instance.
 run: build stop
 	open '$(APP)'
+
+## Rebuild Release and launch a fresh instance.
+run-release: stop release
+	open '$(CURDIR)/build/Release/$(SCHEME).app'
 
 ## Quit any running instance.
 stop:
@@ -64,5 +102,5 @@ path:
 
 ## Remove build artifacts.
 clean:
-	rm -rf '$(BUILD_DIR)'
+	rm -rf '$(CURDIR)/build'
 	xcodebuild clean -scheme $(SCHEME) -destination '$(DEST)' >/dev/null 2>&1 || true

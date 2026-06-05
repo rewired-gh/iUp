@@ -128,11 +128,14 @@ struct SettingsView: View {
                 Toggle("Launch at login", isOn: $model.launchAtLogin)
                 Toggle("Auto-start session on launch", isOn: $model.autoStartSession)
             }
+            #if DEBUG
+            // Debug-only escape hatch — never exposed in Release builds.
             Section {
                 Toggle("Debug mode", isOn: $model.debugMode)
             } footer: {
                 Text("Allows pressing Esc on the lock screen to unlock immediately without authentication. For testing only.")
             }
+            #endif
         }
     }
 }
