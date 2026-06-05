@@ -39,7 +39,7 @@ final class Settings {
             Key.jiggleInterval: 30.0,
             Key.tempPauseEnabled: true,
             Key.tempPauseIdle: 60.0,
-            Key.displayInternalDim: true,
+            Key.displayInternalDim: false,
             Key.lockEnabled: true,
             Key.burnInInterval: 30.0,
             Key.launchAtLogin: false,
