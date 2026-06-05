@@ -40,7 +40,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.session.tick(idle: idle)
         }
 
-        lock.onDidLock = { [weak self] in self?.display.didLock() }
+        lock.onDidLock = { [weak self] in
+            // Dim 1s after the overlay appears, so the screen goes black first
+            // then fades the backlight. Skip if the user already unlocked.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                guard let self, self.lock.state == .locked else { return }
+                self.display.didLock()
+            }
+        }
         lock.onWillUnlock = { [weak self] in self?.display.willUnlock() }
 
         inputTap = InputObservationTap { [weak self] isSynthetic in
