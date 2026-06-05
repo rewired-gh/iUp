@@ -2,8 +2,6 @@
 //  iUpUITests.swift
 //  iUpUITests
 //
-//  Created by 李皓钧 on 2026/6/3.
-//
 
 import XCTest
 
