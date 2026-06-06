@@ -73,7 +73,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             stateLabelItem.title = "Session: Off"
             sessionItem.title = "Start Session"
             resumeItem.isHidden = true
-            statusItem.button?.alphaValue = 0.7
+            statusItem.button?.alphaValue = 0.5
         case .active:
             stateLabelItem.title = "Session: Active"
             sessionItem.title = "Stop Session"
@@ -83,7 +83,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             stateLabelItem.title = "Session: Paused (idle)"
             sessionItem.title = "Stop Session"
             resumeItem.isHidden = false
-            statusItem.button?.alphaValue = 0.7
+            statusItem.button?.alphaValue = 0.5
         }
     }
 
