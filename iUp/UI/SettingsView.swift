@@ -97,24 +97,16 @@ struct SettingsView: View {
             }
             .disabled(!model.jiggleEnabled)
             Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Movement amount")
-                        Spacer()
-                        Text(model.jiggleLevel.title)
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(
-                        value: jiggleLevelIndex,
-                        in: 0...Double(JiggleLevel.allCases.count - 1),
-                        step: 1
-                    ) {
-                        Text("Movement amount")
-                    } minimumValueLabel: {
-                        Text("Slightest")
-                    } maximumValueLabel: {
-                        Text("Maximum")
-                    }
+                Slider(
+                    value: jiggleLevelIndex,
+                    in: 0...Double(JiggleLevel.allCases.count - 1),
+                    step: 1
+                ) {
+                    Text("Movement amount")
+                } minimumValueLabel: {
+                    Text("Slightest")
+                } maximumValueLabel: {
+                    Text("Maximum")
                 }
             } footer: {
                 Text("How far the cursor roams from where it sat. The slightest level keeps motion within 1 px; the maximum is a wide but bounded wander.")
