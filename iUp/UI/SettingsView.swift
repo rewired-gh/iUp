@@ -88,6 +88,14 @@ struct SettingsView: View {
                 DurationRow("Move every", seconds: $model.jiggleInterval, range: 5...600, step: 5)
             }
             .disabled(!model.jiggleEnabled)
+            Section {
+                Picker("Movement amount", selection: $model.jiggleLevel) {
+                    ForEach(JiggleLevel.allCases) { Text($0.title).tag($0) }
+                }
+            } footer: {
+                Text("How far the cursor roams from where it sat. The slightest level keeps motion within 1 px; the maximum wanders the full screen.")
+            }
+            .disabled(!model.jiggleEnabled)
         }
     }
 
@@ -199,6 +207,7 @@ final class SettingsModel: ObservableObject {
     var jiggleEnabled: Bool { get { settings.jiggleEnabled } set { write(\.jiggleEnabled, newValue) } }
     var jiggleIdleStart: TimeInterval { get { settings.jiggleIdleStart } set { write(\.jiggleIdleStart, newValue) } }
     var jiggleInterval: TimeInterval { get { settings.jiggleInterval } set { write(\.jiggleInterval, newValue) } }
+    var jiggleLevel: JiggleLevel { get { settings.jiggleLevel } set { write(\.jiggleLevel, newValue) } }
     var tempPauseEnabled: Bool { get { settings.tempPauseEnabled } set { write(\.tempPauseEnabled, newValue) } }
     var tempPauseIdle: TimeInterval { get { settings.tempPauseIdle } set { write(\.tempPauseIdle, newValue) } }
     var displayInternalDim: Bool { get { settings.displayInternalDim } set { write(\.displayInternalDim, newValue) } }

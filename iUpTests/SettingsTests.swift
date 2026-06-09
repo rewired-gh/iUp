@@ -17,6 +17,7 @@ struct SettingsTests {
         #expect(s.jiggleEnabled == true)
         #expect(s.jiggleIdleStart == 60)
         #expect(s.jiggleInterval == 30)
+        #expect(s.jiggleLevel == .full)
         #expect(s.tempPauseEnabled == true)
         #expect(s.tempPauseIdle == 60)
         #expect(s.displayInternalDim == true)

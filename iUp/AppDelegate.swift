@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var monitor = ActivityMonitor()
     private lazy var awake = AwakeController(settings: settings, assertions: IOPMAssertions())
     private lazy var jiggle: JiggleController = {
-        JiggleController(settings: settings, poster: BackgroundPoster(CGMovePoster()))
+        JiggleController(settings: settings, poster: BackgroundPoster(CGMovePoster(settings: settings)))
     }()
     private lazy var session = SessionController(settings: settings, awake: awake, jiggle: jiggle)
     private lazy var lock = LockController(settings: settings)

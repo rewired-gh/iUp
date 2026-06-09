@@ -52,6 +52,10 @@ final class CGMovePoster: MovePosting {
     private static let driftTolerance: CGFloat = 30   // max per-axis drift per step (points)
     private static let screenInset: CGFloat = 3       // keep off the very edge
 
+    private let settings: Settings
+
+    init(settings: Settings) { self.settings = settings }
+
     func postBurst() {
         guard let source = CGEventSource(stateID: .hidSystemState) else { return }
         let old = source.localEventsSuppressionInterval
@@ -62,11 +66,14 @@ final class CGMovePoster: MovePosting {
         guard !screens.isEmpty else { return }
         var rng = SystemRandomNumberGenerator()
         var current = CGEvent(source: nil)?.location ?? CGPoint(x: screens[0].midX, y: screens[0].midY)
+        // Confine the whole burst within `radius` of where the cursor started.
+        let origin = current
+        let radius = settings.jiggleLevel.radius
 
         for i in 0..<Self.stepCount {
-            guard let next = JiggleMath.nextPoint(from: current, avoiding: current,
+            guard let next = JiggleMath.nextPoint(from: current, avoiding: current, origin: origin,
                                                   screens: screens, tolerance: Self.driftTolerance,
-                                                  inset: Self.screenInset, using: &rng) else { break }
+                                                  radius: radius, inset: Self.screenInset, using: &rng) else { break }
             let e = CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
                             mouseCursorPosition: next, mouseButton: .left)
             e?.tagAsSynthetic()

@@ -18,6 +18,7 @@ final class Settings {
         static let jiggleEnabled = "jiggle.enabled"
         static let jiggleIdleStart = "jiggle.idleStart"
         static let jiggleInterval = "jiggle.interval"
+        static let jiggleLevel = "jiggle.level"
         static let tempPauseEnabled = "tempPause.enabled"
         static let tempPauseIdle = "tempPause.idle"
         static let displayInternalDim = "display.internalDim"
@@ -37,6 +38,7 @@ final class Settings {
             Key.jiggleEnabled: true,
             Key.jiggleIdleStart: 60.0,
             Key.jiggleInterval: 30.0,
+            Key.jiggleLevel: JiggleLevel.full.rawValue,
             Key.tempPauseEnabled: true,
             Key.tempPauseIdle: 60.0,
             Key.displayInternalDim: false,
@@ -61,6 +63,10 @@ final class Settings {
     var jiggleEnabled: Bool { get { bool(Key.jiggleEnabled) } set { setBool(newValue, Key.jiggleEnabled) } }
     var jiggleIdleStart: TimeInterval { get { dbl(Key.jiggleIdleStart) } set { setDbl(newValue, Key.jiggleIdleStart) } }
     var jiggleInterval: TimeInterval { get { dbl(Key.jiggleInterval) } set { setDbl(newValue, Key.jiggleInterval) } }
+    var jiggleLevel: JiggleLevel {
+        get { defaults.string(forKey: Key.jiggleLevel).flatMap(JiggleLevel.init(rawValue:)) ?? .full }
+        set { defaults.set(newValue.rawValue, forKey: Key.jiggleLevel) }
+    }
 
     var tempPauseEnabled: Bool { get { bool(Key.tempPauseEnabled) } set { setBool(newValue, Key.tempPauseEnabled) } }
     var tempPauseIdle: TimeInterval { get { dbl(Key.tempPauseIdle) } set { setDbl(newValue, Key.tempPauseIdle) } }
