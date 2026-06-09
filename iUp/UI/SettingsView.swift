@@ -117,7 +117,7 @@ struct SettingsView: View {
                     }
                 }
             } footer: {
-                Text("How far the cursor roams from where it sat. The slightest level keeps motion within 1 px; the maximum lets it wander freely.")
+                Text("How far the cursor roams from where it sat. The slightest level keeps motion within 1 px; the maximum is a wide but bounded wander.")
             }
             .disabled(!model.jiggleEnabled)
         }
