@@ -43,6 +43,14 @@ struct SettingsView: View {
     /// Fixed so the window width stays stable across panes; height is intrinsic.
     private let paneWidth: CGFloat = 460
 
+    /// Bridges the discrete `JiggleLevel` enum to the slider's continuous value.
+    private var jiggleLevelIndex: Binding<Double> {
+        Binding(
+            get: { Double(JiggleLevel.allCases.firstIndex(of: model.jiggleLevel) ?? 0) },
+            set: { model.jiggleLevel = JiggleLevel.allCases[Int($0.rounded())] }
+        )
+    }
+
     var body: some View {
         content
             .formStyle(.grouped)
@@ -89,11 +97,27 @@ struct SettingsView: View {
             }
             .disabled(!model.jiggleEnabled)
             Section {
-                Picker("Movement amount", selection: $model.jiggleLevel) {
-                    ForEach(JiggleLevel.allCases) { Text($0.title).tag($0) }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Movement amount")
+                        Spacer()
+                        Text(model.jiggleLevel.title)
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: jiggleLevelIndex,
+                        in: 0...Double(JiggleLevel.allCases.count - 1),
+                        step: 1
+                    ) {
+                        Text("Movement amount")
+                    } minimumValueLabel: {
+                        Text("Slightest")
+                    } maximumValueLabel: {
+                        Text("Maximum")
+                    }
                 }
             } footer: {
-                Text("How far the cursor roams from where it sat. The slightest level keeps motion within 1 px; the maximum wanders the full screen.")
+                Text("How far the cursor roams from where it sat. The slightest level keeps motion within 1 px; the maximum lets it wander freely.")
             }
             .disabled(!model.jiggleEnabled)
         }
