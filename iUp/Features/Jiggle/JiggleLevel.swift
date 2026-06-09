@@ -13,9 +13,9 @@ enum JiggleLevel: String, CaseIterable, Identifiable {
         switch self {
         case .slightest: 1
         case .low:       10
-        case .medium:    40
-        case .high:      120
-        case .full:      400
+        case .medium:    20
+        case .high:      30
+        case .full:      40
         }
     }
 
